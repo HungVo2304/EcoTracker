@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card form-card">
+    <h2>Add Friend</h2>
+
+    <form method="post" class="eco-form">
+        {% csrf_token %}
+        <input type="text" name="username" placeholder="Enter username..." required>
+        <button type="submit" class="upload-btn">Send Friend Request</button>
+    </form>
+</div>
+
+<div class="dashboard-main">
+    <div class="card">
+        <h2>Friend Requests</h2>
+
+        {% for request_item in friend_requests %}
+            <div class="action-item">
+                <div>
+                    <h4>{{ request_item.sender.username }}</h4>
+                    <p>wants to be your friend</p>
+                </div>
+
+                <a href="{% url 'accept_friend' request_item.id %}">
+                    <button class="small-btn">Accept</button>
+                </a>
+            </div>
+        {% empty %}
+            <p class="empty-text">No friend requests.</p>
+        {% endfor %}
+    </div>
+
+    <div class="card">
+        <h2>Your Friends</h2>
+
+        {% for friendship in accepted_friendships %}
+            <div class="action-item">
+                <div>
+                    {% if friendship.sender == user %}
+                        <h4>{{ friendship.receiver.username }}</h4>
+                    {% else %}
+                        <h4>{{ friendship.sender.username }}</h4>
+                    {% endif %}
+                    <p>Friend</p>
+                </div>
+
+                <a href="{% url 'remove_friend' friendship.id %}">
+                    <button class="danger-btn">Remove</button>
+                </a>
+            </div>
+        {% empty %}
+            <p class="empty-text">You have no friends yet.</p>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}

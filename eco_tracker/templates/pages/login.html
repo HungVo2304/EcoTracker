@@ -1,0 +1,31 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Login - Eco Tracker</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+
+<body class="login-page">
+
+    <div class="login-card">
+        <h1>Eco Tracker</h1>
+        <p>Login to continue your eco journey</p>
+
+        <form method="post" class="eco-form">
+            {% csrf_token %}
+            {{ form.as_p }}
+
+            <button type="submit" class="upload-btn">Login</button>
+        </form>
+        <p class="auth-link">
+            Don't have an account?
+            <a href="{% url 'register' %}">Register here</a>
+        </p>
+    </div>
+
+</body>
+
+</html>

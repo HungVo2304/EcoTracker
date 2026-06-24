@@ -1,0 +1,25 @@
+<div class="card progress-card">
+    <div class="card-header">
+        <div>
+            <p class="card-label">Eco Progress</p>
+            <h2>{{ progress_percent|default:0 }}%</h2>
+        </div>
+
+        <span class="level-badge">{{ impact_level|default:"Eco Beginner" }}</span>
+    </div>
+
+    <div class="progress-bar">
+        <div class="progress-fill" data-progress="{{ progress_percent|default:0 }}"></div>
+    </div>
+
+    <p class="muted-text">
+        Your actions are creating a positive environmental impact.
+    </p>
+</div>
+
+<script>
+    const progressFill = document.querySelector(".progress-fill");
+    if (progressFill) {
+        progressFill.style.width = progressFill.dataset.progress + "%";
+    }
+</script>

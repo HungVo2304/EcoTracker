@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="dashboard-grid">
+    {% include "components/progress_card.html" %}
+    {% include "components/stat_card.html" with label="Total Points" value=total_points subtitle="all-time score" %}
+    {% include "components/stat_card.html" with label="Total Actions" value=action_count subtitle="uploaded actions" %}
+</section>
+
+<div class="card">
+    <h2>All Eco Actions</h2>
+
+    <div class="action-list">
+        {% for action in actions %}
+            <div class="action-item">
+                <div>
+                    <h4>{{ action.get_category_display }}</h4>
+                    <p>{{ action.caption }} · {{ action.created_at|date:"d M Y" }}</p>
+                </div>
+                <strong>+{{ action.points }} pts</strong>
+            </div>
+        {% empty %}
+            <p class="empty-text">No actions yet.</p>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}

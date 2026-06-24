@@ -1,0 +1,51 @@
+<aside class="sidebar">
+    <div class="brand">
+        <div class="brand-logo">🌱</div>
+        <div>
+            <h2>Eco Tracker</h2>
+            <p>Green Action App</p>
+        </div>
+    </div>
+
+    <nav class="sidebar-menu">
+        <a class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
+            Dashboard
+        </a>
+
+        <a class="{% if request.resolver_match.url_name == 'upload_action' %}active{% endif %}" href="{% url 'upload_action' %}">
+            Upload Action
+        </a>
+
+        <a class="{% if request.resolver_match.url_name == 'my_progress' %}active{% endif %}" href="{% url 'my_progress' %}">
+            My Progress
+        </a>
+
+        <a class="{% if request.resolver_match.url_name == 'friends' %}active{% endif %}" href="{% url 'friends' %}">
+            Friends
+        </a>
+
+        <a class="{% if request.resolver_match.url_name == 'groups' %}active{% endif %}" href="{% url 'groups' %}">
+            Groups
+        </a>
+
+        <a class="{% if request.resolver_match.url_name == 'leaderboard' %}active{% endif %}" href="{% url 'leaderboard' %}">
+            Leaderboard
+        </a>
+
+        <a class="{% if request.resolver_match.url_name == 'profile' %}active{% endif %}" href="{% url 'profile' %}">
+            Profile
+        </a>
+    </nav>
+
+    <div class="sidebar-bottom">
+        {% if user.is_authenticated %}
+            <p>Logged in as</p>
+            <h3>{{ user.username }}</h3>
+
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button class="logout-btn">Logout</button>
+            </form>
+        {% endif %}
+    </div>
+</aside>

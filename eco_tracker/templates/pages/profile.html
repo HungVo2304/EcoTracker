@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="dashboard-grid">
+    {% include "components/progress_card.html" %}
+    {% include "components/stat_card.html" with label="Total Points" value=total_points subtitle="your eco score" %}
+    {% include "components/stat_card.html" with label="Actions Uploaded" value=action_count subtitle="completed actions" %}
+</section>
+
+<div class="card">
+    <h2>{{ user.username }}</h2>
+    <p class="muted-text">Impact Level: {{ impact_level }}</p>
+    <p class="muted-text">Progress: {{ progress_percent }}%</p>
+</div>
+
+{% endblock %}

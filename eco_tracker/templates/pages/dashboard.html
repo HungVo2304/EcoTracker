@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="dashboard-grid">
+    {% include "components/progress_card.html" %}
+
+    {% include "components/stat_card.html" with label="Total Eco Points" value=total_points subtitle="earned so far" %}
+
+    {% include "components/stat_card.html" with label="Actions Uploaded" value=action_count subtitle="eco actions completed" %}
+</section>
+
+<section class="dashboard-main">
+    {% include "components/recent_actions.html" %}
+    {% include "components/group_summary.html" %}
+</section>
+
+{% endblock %}

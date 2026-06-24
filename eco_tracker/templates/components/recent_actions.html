@@ -1,0 +1,23 @@
+<div class="card recent-card">
+    <div class="card-header">
+        <div>
+            <p class="card-label">Recent Eco Actions</p>
+            <h2>Latest uploads</h2>
+        </div>
+        <a href="{% url 'my_progress' %}">View all</a>
+    </div>
+
+    <div class="action-list">
+        {% for action in recent_actions %}
+            <div class="action-item">
+                <div>
+                    <h4>{{ action.get_category_display }}</h4>
+                    <p>{{ action.caption }}</p>
+                </div>
+                <strong>+{{ action.points }} pts</strong>
+            </div>
+        {% empty %}
+            <p class="empty-text">No eco actions uploaded yet.</p>
+        {% endfor %}
+    </div>
+</div>

@@ -1,0 +1,527 @@
+:root {
+    --bg: #f5f7f0;
+    --panel: #ffffff;
+    --panel-soft: #edf4e8;
+    --green: #6f9b63;
+    --green-dark: #2f4f2f;
+    --green-light: #dcebd5;
+    --text: #263626;
+    --muted: #7a8b72;
+    --border: #d9e5d1;
+    --shadow: 0 12px 30px rgba(50, 80, 45, 0.08);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+
+.sidebar {
+    width: 260px;
+    background: var(--panel-soft);
+    border-right: 1px solid var(--border);
+    padding: 28px 22px;
+    display: flex;
+    flex-direction: column;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 40px;
+}
+
+.brand-logo {
+    width: 44px;
+    height: 44px;
+    background: var(--green);
+    color: white;
+    display: grid;
+    place-items: center;
+    border-radius: 15px;
+    font-size: 22px;
+}
+
+.brand h2 {
+    font-size: 19px;
+}
+
+.brand p {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.sidebar-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sidebar-menu a {
+    text-decoration: none;
+    color: var(--green-dark);
+    padding: 14px 16px;
+    border-radius: 14px;
+    transition: 0.2s;
+}
+
+.sidebar-menu a:hover {
+    background: var(--green-light);
+}
+
+.sidebar-menu a.active {
+    background: var(--green);
+    color: white;
+    font-weight: bold;
+}
+
+.sidebar-bottom {
+    margin-top: auto;
+    background: #e4efdd;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 18px;
+}
+
+.sidebar-bottom p {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.sidebar-bottom h3 {
+    margin: 6px 0 12px;
+}
+
+/* Main layout */
+
+.main-content {
+    flex: 1;
+    padding: 30px;
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+}
+
+.topbar h1 {
+    font-size: 28px;
+    color: var(--green-dark);
+}
+
+.topbar p {
+    margin-top: 5px;
+    color: var(--muted);
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.topbar-actions input {
+    width: 220px;
+    padding: 13px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    outline: none;
+    background: white;
+}
+
+.upload-btn,
+.secondary-btn {
+    border: none;
+    border-radius: 14px;
+    padding: 13px 18px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.upload-btn {
+    background: var(--green);
+    color: white;
+}
+
+.secondary-btn {
+    width: 100%;
+    margin-top: 20px;
+    background: var(--green-light);
+    color: var(--green-dark);
+}
+
+/* Cards */
+
+.card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+
+.card-label {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.card h2 {
+    color: var(--green-dark);
+}
+
+.card span {
+    color: var(--green);
+    font-size: 14px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.card-header a {
+    color: var(--green);
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.level-badge {
+    background: var(--green-light);
+    color: var(--green-dark);
+    padding: 7px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+}
+
+.muted-text {
+    color: var(--muted);
+    margin-top: 14px;
+    line-height: 1.5;
+}
+
+/* Dashboard */
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 22px;
+    margin-bottom: 22px;
+}
+
+.dashboard-main {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 22px;
+}
+
+.stat-card {
+    min-height: 160px;
+}
+
+.stat-card h2 {
+    font-size: 34px;
+    margin: 12px 0;
+}
+
+.progress-card {
+    min-height: 180px;
+}
+
+/* Progress */
+
+.progress-bar,
+.mini-progress {
+    background: #e2ecd9;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 13px;
+    margin-top: 26px;
+}
+
+.progress-bar.small {
+    height: 10px;
+    margin-top: 16px;
+}
+
+.mini-progress {
+    height: 8px;
+}
+
+.progress-bar div,
+.mini-progress div {
+    height: 100%;
+    background: var(--green);
+    border-radius: 999px;
+}
+
+/* Recent actions */
+
+.recent-card {
+    min-height: 360px;
+}
+
+.action-list {
+    margin-top: 20px;
+}
+
+.action-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.action-item h4 {
+    color: var(--green-dark);
+    margin-bottom: 5px;
+}
+
+.action-item p {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.action-item strong {
+    color: var(--green);
+}
+
+/* Group */
+
+.group-card {
+    min-height: 360px;
+}
+
+.group-info {
+    display: flex;
+    justify-content: space-between;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.group-info p {
+    color: var(--muted);
+}
+
+/* Responsive */
+
+@media (max-width: 1000px) {
+    .dashboard-grid,
+    .dashboard-main {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        width: 220px;
+    }
+}
+.form-card {
+    max-width: 650px;
+}
+
+.eco-form {
+    margin-top: 20px;
+}
+
+.eco-form p {
+    margin-bottom: 18px;
+}
+
+.eco-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: var(--green-dark);
+}
+
+.eco-form input,
+.eco-form select,
+.eco-form textarea {
+    width: 100%;
+    padding: 13px 15px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    outline: none;
+    background: white;
+}
+
+.empty-text {
+    color: var(--muted);
+    margin-top: 18px;
+}
+
+.small-btn,
+.danger-btn {
+    border: none;
+    border-radius: 12px;
+    padding: 9px 14px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.small-btn {
+    background: var(--green);
+    color: white;
+}
+
+.danger-btn {
+    background: #f1d0d0;
+    color: #8b2f2f;
+}
+
+.logout-btn {
+    margin-top: 12px;
+    width: 100%;
+    border: none;
+    background: var(--green);
+    color: white;
+    padding: 10px;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.group-box {
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.group-box h3 {
+    color: var(--green-dark);
+}
+
+.group-box p {
+    color: var(--muted);
+    margin: 8px 0 16px;
+}
+
+.inline-form {
+    display: flex;
+    gap: 10px;
+}
+
+.inline-form input {
+    flex: 1;
+}
+
+.inline-form .secondary-btn {
+    width: auto;
+    margin-top: 0;
+}
+
+.login-page {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background: var(--bg);
+}
+
+.login-card {
+    width: 420px;
+    background: var(--panel);
+    padding: 35px;
+    border-radius: 24px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+.login-card h1 {
+    color: var(--green-dark);
+    margin-bottom: 8px;
+}
+
+.login-card p {
+    color: var(--muted);
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--green);
+    border-radius: 999px;
+    width: 0;
+}
+
+.auth-link {
+    margin-top: 18px;
+    text-align: center;
+    color: var(--muted);
+}
+
+.auth-link a {
+    color: var(--green);
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-wrapper input {
+    padding-right: 75px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    border: none;
+    background: var(--green-light);
+    color: var(--green-dark);
+    padding: 7px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.message-container {
+    margin-bottom: 20px;
+}
+
+.message-box {
+    padding: 14px 18px;
+    border-radius: 14px;
+    margin-bottom: 10px;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.message-box.success {
+    background: #e2f4df;
+    color: #2f6b2f;
+    border-color: #b8dfb0;
+}
+
+.message-box.warning {
+    background: #fff4d6;
+    color: #8a6500;
+    border-color: #f0d27a;
+}
+
+.message-box.error {
+    background: #ffe1e1;
+    color: #9c2f2f;
+    border-color: #efb1b1;
+}

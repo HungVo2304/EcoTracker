@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card form-card">
+    <h2>Upload Eco Action</h2>
+    <p class="muted-text">Upload a photo, choose the action category, and earn points.</p>
+
+    <form method="post" enctype="multipart/form-data" class="eco-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+
+        <button type="submit" class="upload-btn">Submit Action</button>
+    </form>
+</div>
+
+{% endblock %}

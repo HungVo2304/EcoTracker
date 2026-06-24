@@ -1,0 +1,107 @@
+from django.db import models
+from django.contrib.auth.models import User
+
+
+POINTS_BY_CATEGORY = {
+    "recycling": 20,
+    "tree_planting": 50,
+    "green_transport": 30,
+    "clean_up": 40,
+    "saving_energy": 15,
+    "reusable_item": 25,
+}
+
+
+class EcoAction(models.Model):
+    CATEGORY_CHOICES = [
+        ("recycling", "Recycling"),
+        ("tree_planting", "Tree Planting"),
+        ("green_transport", "Green Transport"),
+        ("clean_up", "Clean Up"),
+        ("saving_energy", "Saving Energy"),
+        ("reusable_item", "Reusable Item"),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="eco_actions"
+    )
+    image = models.ImageField(upload_to="eco_actions/")
+    caption = models.CharField(max_length=255)
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    points = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        self.points = POINTS_BY_CATEGORY.get(self.category, 0)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_category_display()} - {self.points} pts"
+
+
+class Friendship(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+    ]
+
+    sender = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="sent_friend_requests"
+    )
+    receiver = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="received_friend_requests"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("sender", "receiver")
+
+    def __str__(self):
+        return f"{self.sender.username} → {self.receiver.username} ({self.status})"
+
+
+class EcoGroup(models.Model):
+    name = models.CharField(max_length=100)
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="owned_groups"
+    )
+    members = models.ManyToManyField(
+        User,
+        through="GroupMember",
+        related_name="eco_groups"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def member_count(self):
+        return self.members.count()
+
+    def can_add_member(self):
+        return self.member_count() < 5
+
+    def __str__(self):
+        return self.name
+
+
+class GroupMember(models.Model):
+    group = models.ForeignKey(EcoGroup, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("group", "user")
+
+    def __str__(self):
+        return f"{self.user.username} in {self.group.name}"
