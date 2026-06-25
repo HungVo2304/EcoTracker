@@ -2,52 +2,149 @@
 
 {% block content %}
 
-<div class="card form-card">
-    <h2>Add Friend</h2>
+<div class="friends-layout">
 
-    <form method="post" class="eco-form">
-        {% csrf_token %}
-        <input type="text" name="username" placeholder="Enter username..." required>
-        <button type="submit" class="upload-btn">Send Friend Request</button>
-    </form>
-</div>
+    <div class="card form-card">
+        <h2>Add Friend</h2>
+        <p class="muted-text">Search by username and send a friend request.</p>
 
-<div class="dashboard-main">
-    <div class="card">
-        <h2>Friend Requests</h2>
-
-        {% for request_item in friend_requests %}
-            <div class="action-item">
-                <div>
-                    <h4>{{ request_item.sender.username }}</h4>
-                    <p>wants to be your friend</p>
-                </div>
-
-                <a href="{% url 'accept_friend' request_item.id %}">
-                    <button class="small-btn">Accept</button>
-                </a>
-            </div>
-        {% empty %}
-            <p class="empty-text">No friend requests.</p>
-        {% endfor %}
+        <form method="post" class="eco-form friend-form">
+            {% csrf_token %}
+            <input type="text" name="username" placeholder="Enter username..." required>
+            <button type="submit" class="upload-btn">Send Request</button>
+        </form>
     </div>
 
     <div class="card">
-        <h2>Your Friends</h2>
+        <p class="card-label">Your Score</p>
+        <h2>{{ user_total_points }} pts</h2>
+        <p class="muted-text">Use this to compare your progress with friends.</p>
+    </div>
 
-        {% for friendship in accepted_friendships %}
-            <div class="action-item">
-                <div>
-                    {% if friendship.sender == user %}
-                        <h4>{{ friendship.receiver.username }}</h4>
-                    {% else %}
-                        <h4>{{ friendship.sender.username }}</h4>
-                    {% endif %}
-                    <p>Friend</p>
+</div>
+
+<div class="friends-sections">
+
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <p class="card-label">Received Requests</p>
+                <h2>Friend Requests</h2>
+            </div>
+        </div>
+
+        <div class="friend-list">
+            {% for request_item in received_requests %}
+                <div class="friend-item">
+                    <div class="friend-avatar">
+                        {{ request_item.sender.username|first|upper }}
+                    </div>
+
+                    <div class="friend-info">
+                        <h4>{{ request_item.sender.username }}</h4>
+                        <p>wants to be your friend</p>
+                    </div>
+
+                    <div class="friend-actions">
+                        <a href="{% url 'accept_friend' request_item.id %}">
+                            <button class="small-btn">Accept</button>
+                        </a>
+
+                        <a href="{% url 'reject_friend' request_item.id %}">
+                            <button class="danger-btn">Reject</button>
+                        </a>
+                    </div>
+                </div>
+            {% empty %}
+                <p class="empty-text">No received friend requests.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <p class="card-label">Sent Requests</p>
+                <h2>Pending</h2>
+            </div>
+        </div>
+
+        <div class="friend-list">
+            {% for request_item in sent_requests %}
+                <div class="friend-item">
+                    <div class="friend-avatar">
+                        {{ request_item.receiver.username|first|upper }}
+                    </div>
+
+                    <div class="friend-info">
+                        <h4>{{ request_item.receiver.username }}</h4>
+                        <p>Waiting for response</p>
+                    </div>
+
+                    <div class="friend-actions">
+                        <a href="{% url 'cancel_friend_request' request_item.id %}">
+                            <button class="danger-btn">Cancel</button>
+                        </a>
+                    </div>
+                </div>
+            {% empty %}
+                <p class="empty-text">No pending sent requests.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div>
+            <p class="card-label">Your Friends</p>
+            <h2>Eco Friends</h2>
+        </div>
+    </div>
+
+    <div class="friend-grid">
+        {% for item in friends_data %}
+            <div class="friend-card">
+                <div class="friend-card-top">
+                    <div class="friend-avatar large">
+                        {{ item.friend.username|first|upper }}
+                    </div>
+
+                    <div>
+                        <h3>{{ item.friend.username }}</h3>
+                        <p>Eco Friend</p>
+                    </div>
                 </div>
 
-                <a href="{% url 'remove_friend' friendship.id %}">
-                    <button class="danger-btn">Remove</button>
+                <div class="compare-box">
+                    <div>
+                        <p>Your Points</p>
+                        <strong>{{ user_total_points }} pts</strong>
+                    </div>
+
+                    <div>
+                        <p>{{ item.friend.username }}'s Points</p>
+                        <strong>{{ item.friend_total_points }} pts</strong>
+                    </div>
+                </div>
+
+                {% if item.difference > 0 %}
+                    <p class="compare-result positive">
+                        You are ahead by {{ item.difference }} pts.
+                    </p>
+                {% elif item.difference < 0 %}
+                    <p class="compare-result negative">
+                        Your friend is ahead by {{ item.difference|stringformat:"+d"|slice:"1:" }} pts.
+                    </p>
+                {% else %}
+                    <p class="compare-result neutral">
+                        You both have the same score.
+                    </p>
+                {% endif %}
+
+                <a href="{% url 'remove_friend' item.friendship.id %}">
+                    <button class="danger-btn full-btn">Remove Friend</button>
                 </a>
             </div>
         {% empty %}

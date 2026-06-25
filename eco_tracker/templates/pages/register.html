@@ -2,31 +2,42 @@
 
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Register - Eco Tracker</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
+
 <body class="login-page">
 
-<div class="login-card">
-    <h1>Create Account</h1>
-    <p>Join Eco Tracker and start earning eco points</p>
+    <div class="login-card">
+        <h1>Create Account</h1>
+        <p>Join Eco Tracker and start earning eco points</p>
+        {% if messages %}
+        <div class="message-container">
+            {% for message in messages %}
+            <div class="message-box {{ message.tags }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
 
-    <form method="post" class="eco-form">
-        {% csrf_token %}
+        <form method="post" class="eco-form">
+            {% csrf_token %}
 
-        <p>
-            {{ form.username.label_tag }}
-            {{ form.username }}
-        </p>
+            <p>
+                {{ form.username.label_tag }}
+                {{ form.username }}
+            </p>
 
-        <p>
-            {{ form.email.label_tag }}
-            {{ form.email }}
-        </p>
+            <p>
+                {{ form.email.label_tag }}
+                {{ form.email }}
+            </p>
 
-        <p class="password-field">
-            {{ form.password1.label_tag }}
+            <p class="password-field">
+                {{ form.password1.label_tag }}
             <div class="password-wrapper">
                 {{ form.password1 }}
                 <button type="button" class="toggle-password" onclick="togglePassword('id_password1', this)">
@@ -34,10 +45,10 @@
                 </button>
             </div>
             {{ form.password1.errors }}
-        </p>
+            </p>
 
-        <p class="password-field">
-            {{ form.password2.label_tag }}
+            <p class="password-field">
+                {{ form.password2.label_tag }}
             <div class="password-wrapper">
                 {{ form.password2 }}
                 <button type="button" class="toggle-password" onclick="togglePassword('id_password2', this)">
@@ -45,30 +56,31 @@
                 </button>
             </div>
             {{ form.password2.errors }}
+            </p>
+
+            <button type="submit" class="upload-btn">Register</button>
+        </form>
+
+        <p class="auth-link">
+            Already have an account?
+            <a href="{% url 'login' %}">Login here</a>
         </p>
+    </div>
 
-        <button type="submit" class="upload-btn">Register</button>
-    </form>
+    <script>
+        function togglePassword(inputId, button) {
+            const input = document.getElementById(inputId);
 
-    <p class="auth-link">
-        Already have an account?
-        <a href="{% url 'login' %}">Login here</a>
-    </p>
-</div>
-
-<script>
-    function togglePassword(inputId, button) {
-        const input = document.getElementById(inputId);
-
-        if (input.type === "password") {
-            input.type = "text";
-            button.textContent = "Hide";
-        } else {
-            input.type = "password";
-            button.textContent = "Show";
+            if (input.type === "password") {
+                input.type = "text";
+                button.textContent = "Hide";
+            } else {
+                input.type = "password";
+                button.textContent = "Show";
+            }
         }
-    }
-</script>
+    </script>
 
 </body>
+
 </html>

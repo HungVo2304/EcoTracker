@@ -8,20 +8,96 @@
     {% include "components/stat_card.html" with label="Total Actions" value=action_count subtitle="uploaded actions" %}
 </section>
 
-<div class="card">
-    <h2>All Eco Actions</h2>
+<div class="card level-roadmap-card">
+    <div class="card-header">
+        <div>
+            <p class="card-label">Level Roadmap</p>
+            <h2>Your Eco Journey</h2>
+        </div>
+    </div>
 
-    <div class="action-list">
+    <div class="level-roadmap">
+        <div class="roadmap-step {% if total_points >= 0 %}active{% endif %}">
+            <span>🌱</span>
+            <p>Eco Beginner</p>
+            <small>0 pts</small>
+        </div>
+
+        <div class="roadmap-step {% if total_points >= 100 %}active{% endif %}">
+            <span>🍃</span>
+            <p>Green Starter</p>
+            <small>100 pts</small>
+        </div>
+
+        <div class="roadmap-step {% if total_points >= 300 %}active{% endif %}">
+            <span>🌿</span>
+            <p>Eco Warrior</p>
+            <small>300 pts</small>
+        </div>
+
+        <div class="roadmap-step {% if total_points >= 600 %}active{% endif %}">
+            <span>🌍</span>
+            <p>Planet Protector</p>
+            <small>600 pts</small>
+        </div>
+
+        <div class="roadmap-step {% if total_points >= 1000 %}active{% endif %}">
+            <span>🏆</span>
+            <p>Climate Champion</p>
+            <small>1000 pts</small>
+        </div>
+
+        <div class="roadmap-step {% if total_points >= 1500 %}active{% endif %}">
+            <span>🛡️</span>
+            <p>Earth Guardian</p>
+            <small>1500 pts</small>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div>
+            <p class="card-label">My Eco Gallery</p>
+            <h2>All Uploaded Actions</h2>
+        </div>
+
+        <a href="{% url 'upload_action' %}">+ Upload new</a>
+    </div>
+
+    <div class="gallery-grid">
         {% for action in actions %}
-            <div class="action-item">
+        <div class="gallery-card">
+            <a href="{{ action.image.url }}" target="_blank">
+                {% if action.image %}
+                <img src="{{ action.image.url }}" alt="{{ action.caption }}">
+                {% else %}
+                <div class="gallery-placeholder">🌱</div>
+                {% endif %}
+            </a>
+
+            <div class="gallery-info">
                 <div>
                     <h4>{{ action.get_category_display }}</h4>
-                    <p>{{ action.caption }} · {{ action.created_at|date:"d M Y" }}</p>
+                    <p>{{ action.caption }}</p>
+                    <small>{{ action.created_at|date:"d M Y" }}</small>
                 </div>
+
                 <strong>+{{ action.points }} pts</strong>
+
+                <div class="gallery-actions">
+                    <a href="{% url 'edit_action' action.id %}">
+                        <button class="small-btn">Edit</button>
+                    </a>
+
+                    <a href="{% url 'delete_action' action.id %}">
+                        <button class="danger-btn">Delete</button>
+                    </a>
+                </div>
             </div>
+        </div>
         {% empty %}
-            <p class="empty-text">No actions yet.</p>
+        <p class="empty-text">No actions yet. Upload your first eco action.</p>
         {% endfor %}
     </div>
 </div>

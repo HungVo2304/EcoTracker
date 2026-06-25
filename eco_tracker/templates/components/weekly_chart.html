@@ -1,0 +1,23 @@
+<div class="card weekly-chart-card">
+    <div class="card-header">
+        <div>
+            <p class="card-label">Weekly Progress</p>
+            <h2>Last 7 Days</h2>
+        </div>
+        <span>{{ weekly_points }} pts</span>
+    </div>
+
+    <div class="weekly-bars">
+        {% for day in weekly_chart %}
+            <div class="weekly-bar-item">
+                <div class="weekly-bar-track">
+                    <div class="weekly-bar-fill" style="height: {{ day.percent }}%;"></div>
+                </div>
+
+                <strong>{{ day.points }}</strong>
+                <p>{{ day.label }}</p>
+                <small>{{ day.date }}</small>
+            </div>
+        {% endfor %}
+    </div>
+</div>

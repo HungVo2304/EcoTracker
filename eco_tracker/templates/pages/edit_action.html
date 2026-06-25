@@ -4,9 +4,9 @@
 
 <div class="upload-layout">
     <div class="card form-card">
-        <h2>Upload Eco Action</h2>
+        <h2>Edit Eco Action</h2>
         <p class="muted-text">
-            Upload a photo, choose the action category, and earn eco points.
+            Update your photo, caption, or category. Points will update automatically.
         </p>
 
         <form method="post" enctype="multipart/form-data" class="eco-form upload-form">
@@ -18,8 +18,18 @@
                 </div>
             {% endif %}
 
+            <div class="current-image-box">
+                <p class="card-label">Current Image</p>
+
+                {% if eco_action.image %}
+                    <img src="{{ eco_action.image.url }}" alt="{{ eco_action.caption }}">
+                {% else %}
+                    <div class="gallery-placeholder">🌱</div>
+                {% endif %}
+            </div>
+
             <div class="form-group">
-                <label for="{{ form.image.id_for_label }}">Action Image</label>
+                <label for="{{ form.image.id_for_label }}">Replace Image</label>
                 {{ form.image }}
 
                 {% if form.image.errors %}
@@ -31,7 +41,7 @@
 
             <div class="image-preview-box">
                 <img id="imagePreview" src="" alt="Image preview">
-                <p id="previewText">No image selected yet</p>
+                <p id="previewText">New image preview will appear here</p>
             </div>
 
             <div class="form-group">
@@ -58,10 +68,16 @@
 
             <div class="points-preview">
                 <p>Estimated Points</p>
-                <h2 id="pointsPreview">0 pts</h2>
+                <h2 id="pointsPreview">{{ eco_action.points }} pts</h2>
             </div>
 
-            <button type="submit" class="upload-btn">Submit Action</button>
+            <div class="form-actions">
+                <button type="submit" class="upload-btn">Save Changes</button>
+
+                <a href="{% url 'my_progress' %}">
+                    <button type="button" class="secondary-btn">Cancel</button>
+                </a>
+            </div>
         </form>
     </div>
 
@@ -97,13 +113,6 @@
             <span>🛍️ Reusable Item</span>
             <strong>+25 pts</strong>
         </div>
-
-        <div class="upload-rules">
-            <h3>Upload Rules</h3>
-            <p>Allowed: JPG, JPEG, PNG, WEBP</p>
-            <p>Maximum size: 5MB</p>
-            <p>Caption: at least 5 characters</p>
-        </div>
     </div>
 </div>
 
@@ -126,10 +135,6 @@
                 };
 
                 reader.readAsDataURL(file);
-            } else {
-                imagePreview.src = "";
-                imagePreview.style.display = "none";
-                previewText.style.display = "block";
             }
         });
     }

@@ -1,0 +1,25 @@
+<div class="card category-card">
+    <div class="card-header">
+        <div>
+            <p class="card-label">Category Breakdown</p>
+            <h2>Your Eco Focus</h2>
+        </div>
+    </div>
+
+    <div class="category-list">
+        {% for category in category_breakdown %}
+            <div class="category-row">
+                <div>
+                    <h4>{{ category.name }}</h4>
+                    <p>{{ category.actions }} actions</p>
+                </div>
+
+                <strong>{{ category.points }} pts</strong>
+            </div>
+        {% empty %}
+            <p class="empty-text">
+                No category data yet. Upload your first action.
+            </p>
+        {% endfor %}
+    </div>
+</div>

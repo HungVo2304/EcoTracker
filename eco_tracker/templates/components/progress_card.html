@@ -1,25 +1,36 @@
 <div class="card progress-card">
     <div class="card-header">
         <div>
-            <p class="card-label">Eco Progress</p>
-            <h2>{{ progress_percent|default:0 }}%</h2>
+            <p class="card-label">Eco Level Progress</p>
+            <h2>
+                {{ level_info.icon|default:"🌱" }}
+                {{ level_info.name|default:"Eco Beginner" }}
+            </h2>
         </div>
 
-        <span class="level-badge">{{ impact_level|default:"Eco Beginner" }}</span>
+        <span class="level-badge">{{ progress_percent|default:0 }}%</span>
     </div>
 
     <div class="progress-bar">
         <div class="progress-fill" data-progress="{{ progress_percent|default:0 }}"></div>
     </div>
 
-    <p class="muted-text">
-        Your actions are creating a positive environmental impact.
-    </p>
+    <div class="level-meta">
+        <p>{{ level_info.description|default:"Start uploading eco actions to grow your impact." }}</p>
+
+        {% if level_info.next_level %}
+            <small>
+                {{ level_info.points_to_next }} pts left to reach {{ level_info.next_level }}
+            </small>
+        {% else %}
+            <small>You have reached the highest level.</small>
+        {% endif %}
+    </div>
 </div>
 
 <script>
-    const progressFill = document.querySelector(".progress-fill");
-    if (progressFill) {
-        progressFill.style.width = progressFill.dataset.progress + "%";
-    }
+    document.querySelectorAll(".progress-fill").forEach(function (bar) {
+        const progress = bar.dataset.progress || 0;
+        bar.style.width = progress + "%";
+    });
 </script>

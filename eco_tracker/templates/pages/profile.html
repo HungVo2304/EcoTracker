@@ -2,16 +2,144 @@
 
 {% block content %}
 
-<section class="dashboard-grid">
-    {% include "components/progress_card.html" %}
-    {% include "components/stat_card.html" with label="Total Points" value=total_points subtitle="your eco score" %}
-    {% include "components/stat_card.html" with label="Actions Uploaded" value=action_count subtitle="completed actions" %}
+<section class="profile-layout">
+    <div class="card profile-main-card">
+        <div class="profile-header">
+            <div class="profile-avatar image-avatar">
+                {% if user.profile.avatar %}
+                <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}">
+                {% else %}
+                {{ user.username|first|upper }}
+                {% endif %}
+            </div>
+
+            <div>
+                <p class="card-label">Eco Profile</p>
+                <h2>{{ user.username }}</h2>
+
+                {% if user.email %}
+                <p class="muted-text">{{ user.email }}</p>
+                {% else %}
+                <p class="muted-text">No email added</p>
+                {% endif %}
+            </div>
+        </div>
+        <form method="post" action="{% url 'update_avatar' %}" enctype="multipart/form-data" class="avatar-form">
+            {% csrf_token %}
+
+            <label>Update Avatar</label>
+            <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp">
+
+            <button type="submit" class="secondary-btn">Save Avatar</button>
+        </form>
+
+        <div class="profile-info-grid">
+            <div class="profile-info-box">
+                <p>Joined</p>
+                <strong>{{ user.date_joined|date:"d M Y" }}</strong>
+            </div>
+
+            <div class="profile-info-box">
+                <p>Current Level</p>
+                <strong>{{ level_info.icon }} {{ level_info.name }}</strong>
+            </div>
+
+            <div class="profile-info-box">
+                <p>Total Points</p>
+                <strong>{{ total_points }} pts</strong>
+            </div>
+
+            <div class="profile-info-box">
+                <p>Total Actions</p>
+                <strong>{{ action_count }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="card profile-level-card">
+        <p class="card-label">Level Progress</p>
+        <h2>{{ progress_percent }}%</h2>
+
+        <div class="progress-bar">
+            <div class="progress-fill" data-progress="{{ progress_percent|default:0 }}"></div>
+        </div>
+
+        <p class="muted-text">{{ level_info.description }}</p>
+
+        {% if level_info.next_level %}
+        <strong class="next-level-text">
+            {{ level_info.points_to_next }} pts left to {{ level_info.next_level }}
+        </strong>
+        {% else %}
+        <strong class="next-level-text">
+            Highest level reached
+        </strong>
+        {% endif %}
+    </div>
+</section>
+
+<section class="profile-stats-grid">
+    <div class="card">
+        <p class="card-label">Most Common Category</p>
+        <h2>{{ most_common_category }}</h2>
+        <p class="muted-text">{{ most_common_category_count }} actions uploaded</p>
+    </div>
+
+    <div class="card">
+        <p class="card-label">Eco Identity</p>
+        <h2>{{ impact_level }}</h2>
+        <p class="muted-text">Your current environmental impact level.</p>
+    </div>
+
+    <div class="card">
+        <p class="card-label">Next Goal</p>
+
+        {% if level_info.next_level %}
+        <h2>{{ level_info.next_level }}</h2>
+        <p class="muted-text">Keep uploading actions to reach your next level.</p>
+        {% else %}
+        <h2>Max Level</h2>
+        <p class="muted-text">You have completed the full level roadmap.</p>
+        {% endif %}
+    </div>
 </section>
 
 <div class="card">
-    <h2>{{ user.username }}</h2>
-    <p class="muted-text">Impact Level: {{ impact_level }}</p>
-    <p class="muted-text">Progress: {{ progress_percent }}%</p>
+    <div class="card-header">
+        <div>
+            <p class="card-label">Recent Activity</p>
+            <h2>Your Latest Eco Actions</h2>
+        </div>
+
+        <a href="{% url 'my_progress' %}">View all</a>
+    </div>
+
+    <div class="profile-recent-grid">
+        {% for action in recent_actions %}
+        <div class="profile-action-card">
+            {% if action.image %}
+            <img src="{{ action.image.url }}" alt="{{ action.caption }}">
+            {% else %}
+            <div class="gallery-placeholder">🌱</div>
+            {% endif %}
+
+            <div class="profile-action-info">
+                <h4>{{ action.get_category_display }}</h4>
+                <p>{{ action.caption }}</p>
+                <strong>+{{ action.points }} pts</strong>
+            </div>
+        </div>
+        {% empty %}
+        <p class="empty-text">No recent actions yet.</p>
+        {% endfor %}
+    </div>
 </div>
+
+<script>
+    document.querySelectorAll(".progress-fill").forEach(function (bar) {
+        const progress = bar.dataset.progress || 0;
+        bar.style.width = progress + "%";
+    });
+</script>
 
 {% endblock %}

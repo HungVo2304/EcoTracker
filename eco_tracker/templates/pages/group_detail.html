@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="dashboard-grid">
+    {% include "components/stat_card.html" with label="Group Total Points" value=group_total_points subtitle="combined eco score" %}
+
+    {% include "components/stat_card.html" with label="Members" value=group.member_count subtitle="maximum 5 members" %}
+
+    <div class="card stat-card">
+        <p class="card-label">Challenge Status</p>
+
+        {% if group.member_count < 2 %}
+            <h2>Waiting</h2>
+            <span>Need at least 2 members</span>
+        {% else %}
+            <h2>Active</h2>
+            <span>Group challenge is running</span>
+        {% endif %}
+    </div>
+</section>
+
+<div class="group-detail-layout">
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <p class="card-label">Group Leaderboard</p>
+                <h2>{{ group.name }}</h2>
+            </div>
+
+            {% if group.owner == user %}
+                <span class="owner-badge" >Owner</span>
+            {% endif %}
+        </div>
+
+        <div class="leaderboard-list">
+            {% for member in members %}
+                <div class="leaderboard-item">
+                    <div class="rank-circle">
+                        #{{ forloop.counter }}
+                    </div>
+
+                    <div class="friend-avatar">
+                        {{ member.username|first|upper }}
+                    </div>
+
+                    <div class="leaderboard-info">
+                        <h4>{{ member.username }}</h4>
+
+                        {% if member == group.owner %}
+                            <p>Group Owner</p>
+                        {% else %}
+                            <p>Group Member</p>
+                        {% endif %}
+                    </div>
+
+                    <strong>{{ member.total_points }} pts</strong>
+
+                    {% if group.owner == user and member != group.owner %}
+                        <form method="post" action="{% url 'remove_group_member' group.id member.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="danger-btn">Remove</button>
+                        </form>
+                    {% endif %}
+                </div>
+            {% empty %}
+                <p class="empty-text">No members yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <p class="card-label">Manage Group</p>
+        <h2>Actions</h2>
+
+        {% if group.owner == user %}
+            <form method="post" action="{% url 'add_group_member' group.id %}" class="eco-form">
+                {% csrf_token %}
+
+                <label>Add Member</label>
+                <input type="text" name="username" placeholder="Enter username..." required>
+
+                <button type="submit" class="upload-btn full-btn">Add Member</button>
+            </form>
+
+            <form method="post" action="{% url 'delete_group' group.id %}" class="danger-form">
+                {% csrf_token %}
+                <button type="submit" class="danger-btn full-btn">Delete Group</button>
+            </form>
+        {% else %}
+            <p class="muted-text">
+                You are a member of this group.
+            </p>
+
+            <form method="post" action="{% url 'leave_group' group.id %}" class="danger-form">
+                {% csrf_token %}
+                <button type="submit" class="danger-btn full-btn">Leave Group</button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

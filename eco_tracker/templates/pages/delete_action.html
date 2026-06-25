@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card delete-card">
+    <h2>Delete Eco Action?</h2>
+
+    <p class="muted-text">
+        This action will be permanently removed from your profile and your points will decrease.
+    </p>
+
+    <div class="delete-preview">
+        {% if eco_action.image %}
+            <img src="{{ eco_action.image.url }}" alt="{{ eco_action.caption }}">
+        {% else %}
+            <div class="gallery-placeholder">🌱</div>
+        {% endif %}
+
+        <div>
+            <h3>{{ eco_action.get_category_display }}</h3>
+            <p>{{ eco_action.caption }}</p>
+            <strong>+{{ eco_action.points }} pts</strong>
+        </div>
+    </div>
+
+    <form method="post" class="delete-actions">
+        {% csrf_token %}
+
+        <button type="submit" class="danger-btn">Yes, Delete</button>
+
+        <a href="{% url 'my_progress' %}">
+            <button type="button" class="secondary-btn">Cancel</button>
+        </a>
+    </form>
+</div>
+
+{% endblock %}
