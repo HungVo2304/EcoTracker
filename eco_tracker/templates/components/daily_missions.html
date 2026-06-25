@@ -1,0 +1,35 @@
+<div class="card daily-missions-card">
+    <div class="card-header">
+        <div>
+            <p class="card-label">Daily Missions</p>
+            <h2>{{ missions_completed }}/{{ missions_total }} completed</h2>
+        </div>
+
+        <span class="level-badge">
+            +{{ mission_bonus_points }} bonus pts
+        </span>
+    </div>
+
+    <div class="mission-list">
+        {% for user_mission in daily_missions %}
+            <div class="mission-item {% if user_mission.is_completed %}completed{% endif %}">
+                <div class="mission-status">
+                    {% if user_mission.is_completed %}
+                        ✓
+                    {% else %}
+                        {{ forloop.counter }}
+                    {% endif %}
+                </div>
+
+                <div class="mission-content">
+                    <h4>{{ user_mission.mission.title }}</h4>
+                    <p>{{ user_mission.mission.description }}</p>
+                </div>
+
+                <strong>+{{ user_mission.mission.bonus_points }}</strong>
+            </div>
+        {% empty %}
+            {% include "components/empty_state.html" with icon="🎯" title="No missions today" message="Daily missions will appear here." %}
+        {% endfor %}
+    </div>
+</div>

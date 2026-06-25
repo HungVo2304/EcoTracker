@@ -1,0 +1,21 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Access Denied - Eco Tracker</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="login-page">
+
+<div class="login-card">
+    <h1>403</h1>
+    <p>You do not have permission to access this page.</p>
+
+    <a href="{% url 'dashboard' %}">
+        <button class="upload-btn">Back to Dashboard</button>
+    </a>
+</div>
+
+</body>
+</html>

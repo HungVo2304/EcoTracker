@@ -1,0 +1,21 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Page Not Found - Eco Tracker</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="login-page">
+
+<div class="login-card">
+    <h1>404</h1>
+    <p>This page does not exist or has been moved.</p>
+
+    <a href="{% url 'dashboard' %}">
+        <button class="upload-btn">Back to Dashboard</button>
+    </a>
+</div>
+
+</body>
+</html>

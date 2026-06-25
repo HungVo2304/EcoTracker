@@ -8,49 +8,63 @@
     {% include "components/stat_card.html" with label="Total Actions" value=action_count subtitle="uploaded actions" %}
 </section>
 
-<div class="card level-roadmap-card">
+<div class="card eco-roadmap-card">
     <div class="card-header">
         <div>
             <p class="card-label">Level Roadmap</p>
             <h2>Your Eco Journey</h2>
         </div>
+
+        <span class="level-badge">
+            {{ total_points }} pts
+        </span>
     </div>
 
-    <div class="level-roadmap">
-        <div class="roadmap-step {% if total_points >= 0 %}active{% endif %}">
-            <span>🌱</span>
-            <p>Eco Beginner</p>
-            <small>0 pts</small>
+    <div class="eco-roadmap">
+        <div class="eco-roadmap-step {% if total_points >= 0 %}active{% endif %}">
+            <div class="eco-roadmap-icon">🌱</div>
+            <h4>Eco Beginner</h4>
+            <p>0 pts</p>
         </div>
 
-        <div class="roadmap-step {% if total_points >= 100 %}active{% endif %}">
-            <span>🍃</span>
-            <p>Green Starter</p>
-            <small>100 pts</small>
+        <div class="eco-roadmap-line {% if total_points >= 100 %}active{% endif %}"></div>
+
+        <div class="eco-roadmap-step {% if total_points >= 100 %}active{% endif %}">
+            <div class="eco-roadmap-icon">🍃</div>
+            <h4>Green Starter</h4>
+            <p>100 pts</p>
         </div>
 
-        <div class="roadmap-step {% if total_points >= 300 %}active{% endif %}">
-            <span>🌿</span>
-            <p>Eco Warrior</p>
-            <small>300 pts</small>
+        <div class="eco-roadmap-line {% if total_points >= 300 %}active{% endif %}"></div>
+
+        <div class="eco-roadmap-step {% if total_points >= 300 %}active{% endif %}">
+            <div class="eco-roadmap-icon">🌿</div>
+            <h4>Eco Warrior</h4>
+            <p>300 pts</p>
         </div>
 
-        <div class="roadmap-step {% if total_points >= 600 %}active{% endif %}">
-            <span>🌍</span>
-            <p>Planet Protector</p>
-            <small>600 pts</small>
+        <div class="eco-roadmap-line {% if total_points >= 600 %}active{% endif %}"></div>
+
+        <div class="eco-roadmap-step {% if total_points >= 600 %}active{% endif %}">
+            <div class="eco-roadmap-icon">🌍</div>
+            <h4>Planet Protector</h4>
+            <p>600 pts</p>
         </div>
 
-        <div class="roadmap-step {% if total_points >= 1000 %}active{% endif %}">
-            <span>🏆</span>
-            <p>Climate Champion</p>
-            <small>1000 pts</small>
+        <div class="eco-roadmap-line {% if total_points >= 1000 %}active{% endif %}"></div>
+
+        <div class="eco-roadmap-step {% if total_points >= 1000 %}active{% endif %}">
+            <div class="eco-roadmap-icon">🏆</div>
+            <h4>Climate Champion</h4>
+            <p>1000 pts</p>
         </div>
 
-        <div class="roadmap-step {% if total_points >= 1500 %}active{% endif %}">
-            <span>🛡️</span>
-            <p>Earth Guardian</p>
-            <small>1500 pts</small>
+        <div class="eco-roadmap-line {% if total_points >= 1500 %}active{% endif %}"></div>
+
+        <div class="eco-roadmap-step {% if total_points >= 1500 %}active{% endif %}">
+            <div class="eco-roadmap-icon">🛡️</div>
+            <h4>Earth Guardian</h4>
+            <p>1500 pts</p>
         </div>
     </div>
 </div>
@@ -97,7 +111,7 @@
             </div>
         </div>
         {% empty %}
-        <p class="empty-text">No actions yet. Upload your first eco action.</p>
+        {% include "components/empty_state.html" with icon="🌿" title="No eco actions yet" message="Your uploaded actions will appear here as a personal eco gallery." button_url="/upload/" button_text="Upload First Action" %}
         {% endfor %}
     </div>
 </div>

@@ -1,0 +1,19 @@
+<div class="empty-state">
+    <div class="empty-icon">
+        {{ icon|default:"🌱" }}
+    </div>
+
+    <h3>{{ title|default:"Nothing here yet" }}</h3>
+
+    <p>
+        {{ message|default:"Start using Eco Tracker to see data here." }}
+    </p>
+
+    {% if button_url and button_text %}
+        <a href="{{ button_url }}">
+            <button class="secondary-btn">
+                {{ button_text }}
+            </button>
+        </a>
+    {% endif %}
+</div>

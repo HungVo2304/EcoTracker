@@ -4,7 +4,6 @@
 
 <section class="dashboard-grid">
     {% include "components/stat_card.html" with label="Group Total Points" value=group_total_points subtitle="combined eco score" %}
-
     {% include "components/stat_card.html" with label="Members" value=group.member_count subtitle="maximum 5 members" %}
 
     <div class="card stat-card">
@@ -29,7 +28,7 @@
             </div>
 
             {% if group.owner == user %}
-                <span class="owner-badge" >Owner</span>
+                <span class="owner-badge">Owner</span>
             {% endif %}
         </div>
 
@@ -74,14 +73,27 @@
         <h2>Actions</h2>
 
         {% if group.owner == user %}
-            <form method="post" action="{% url 'add_group_member' group.id %}" class="eco-form">
+            <form method="post" action="{% url 'send_group_invite' group.id %}" class="eco-form">
                 {% csrf_token %}
 
-                <label>Add Member</label>
+                <label>Invite Member</label>
                 <input type="text" name="username" placeholder="Enter username..." required>
 
-                <button type="submit" class="upload-btn full-btn">Add Member</button>
+                <button type="submit" class="upload-btn full-btn">Send Invite</button>
             </form>
+
+            <div class="pending-invites-box">
+                <p class="card-label">Pending Invites</p>
+
+                {% for invite in pending_invites %}
+                    <div class="group-info">
+                        <p>{{ invite.receiver.username }}</p>
+                        <strong>Pending</strong>
+                    </div>
+                {% empty %}
+                    <p class="empty-text">No pending invites.</p>
+                {% endfor %}
+            </div>
 
             <form method="post" action="{% url 'delete_group' group.id %}" class="danger-form">
                 {% csrf_token %}

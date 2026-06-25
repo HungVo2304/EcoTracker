@@ -1,16 +1,40 @@
+from datetime import timedelta
+
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
-from django.db.models import Sum, Q, Value, IntegerField, Count
-from datetime import timedelta
-from django.contrib.auth import login
-from django.utils import timezone
+from django.db.models import Sum, Count, Q, Value, IntegerField
 from django.db.models.functions import Coalesce
-from .models import EcoAction, Friendship, EcoGroup, GroupMember, UserProfile
-from .forms import EcoActionForm, EcoGroupForm, RegisterForm, AvatarForm
-from .utils import get_level_info
+from django.utils import timezone
 
+from .models import (
+    EcoAction,
+    Friendship,
+    EcoGroup,
+    GroupMember,
+    UserProfile,
+    GroupInvite,
+)
+
+from .forms import (
+    EcoActionForm,
+    EcoGroupForm,
+    RegisterForm,
+    AvatarForm,
+)
+
+from .utils import (
+    get_level_info,
+    complete_missions_for_action,
+    get_today_mission_summary,
+)
+
+
+# =========================
+# AUTH
+# =========================
 
 def register(request):
     if request.user.is_authenticated:
@@ -22,8 +46,12 @@ def register(request):
         if form.is_valid():
             user = form.save()
             UserProfile.objects.get_or_create(user=user)
+
             login(request, user)
-            messages.success(request, "Account created successfully. Welcome to Eco Tracker!")
+            messages.success(
+                request,
+                "Account created successfully. Welcome to Eco Tracker!"
+            )
             return redirect("dashboard")
         else:
             messages.error(request, "Please check your information and try again.")
@@ -32,20 +60,10 @@ def register(request):
 
     return render(request, "pages/register.html", {"form": form})
 
-def calculate_progress(total_points):
-    progress = min(int((total_points / 500) * 100), 100)
 
-    if progress < 25:
-        level = "Eco Beginner"
-    elif progress < 50:
-        level = "Green Starter"
-    elif progress < 75:
-        level = "Eco Warrior"
-    else:
-        level = "Planet Protector"
-
-    return progress, level
-
+# =========================
+# DASHBOARD
+# =========================
 
 @login_required
 def dashboard(request):
@@ -129,10 +147,11 @@ def dashboard(request):
             max_day_points = day_points
 
     for item in weekly_chart:
-        item["percent"] = int((item["points"] / max_day_points) * 100) if max_day_points else 0
+        item["percent"] = int((item["points"] / max_day_points) * 100)
 
     active_group = EcoGroup.objects.filter(members=request.user).first()
 
+    mission_summary = get_today_mission_summary(request.user)
     context = {
         "page_title": "Dashboard",
         "page_subtitle": "Upload actions, earn points, and grow your eco impact",
@@ -158,10 +177,19 @@ def dashboard(request):
 
         "weekly_chart": weekly_chart,
         "category_breakdown": category_breakdown,
+
+        "daily_missions": mission_summary["missions"],
+        "missions_completed": mission_summary["completed"],
+        "missions_total": mission_summary["total"],
+        "mission_bonus_points": mission_summary["bonus_points"],
     }
 
     return render(request, "pages/dashboard.html", context)
 
+
+# =========================
+# ECO ACTIONS
+# =========================
 
 @login_required
 def upload_action(request):
@@ -173,14 +201,32 @@ def upload_action(request):
             eco_action.user = request.user
             eco_action.save()
 
-            messages.success(
-                request,
-                f"Eco action uploaded successfully! +{eco_action.points} points added."
+            completed_missions = complete_missions_for_action(
+                request.user,
+                eco_action
             )
+
+            if completed_missions:
+                mission_titles = ", ".join(
+                    mission.mission.title for mission in completed_missions
+                )
+
+                messages.success(
+                    request,
+                    f"Eco action uploaded! +{eco_action.points} points. Daily mission completed: {mission_titles}."
+                )
+            else:
+                messages.success(
+                    request,
+                    f"Eco action uploaded successfully! +{eco_action.points} points added."
+                )
 
             return redirect("dashboard")
         else:
-            messages.error(request, "Upload failed. Please check your image and information.")
+            messages.error(
+                request,
+                "Upload failed. Please check your image and information."
+            )
     else:
         form = EcoActionForm()
 
@@ -191,6 +237,7 @@ def upload_action(request):
     }
 
     return render(request, "pages/upload_action.html", context)
+
 
 @login_required
 def edit_action(request, action_id):
@@ -259,6 +306,9 @@ def delete_action(request, action_id):
     return render(request, "pages/delete_action.html", context)
 
 
+# =========================
+# MY PROGRESS
+# =========================
 
 @login_required
 def my_progress(request):
@@ -266,6 +316,7 @@ def my_progress(request):
 
     total_points = actions.aggregate(total=Sum("points"))["total"] or 0
     action_count = actions.count()
+
     level_info = get_level_info(total_points)
     progress_percent = level_info["progress_percent"]
     impact_level = level_info["name"]
@@ -280,17 +331,24 @@ def my_progress(request):
     context = {
         "page_title": "My Progress",
         "page_subtitle": "See how your actions affect your eco level",
+
         "total_points": total_points,
         "action_count": action_count,
+
         "progress_percent": progress_percent,
         "impact_level": impact_level,
+        "level_info": level_info,
+
         "category_stats": category_stats,
         "actions": actions,
-        "level_info": level_info,
     }
 
     return render(request, "pages/my_progress.html", context)
 
+
+# =========================
+# FRIENDS
+# =========================
 
 @login_required
 def friends(request):
@@ -328,6 +386,7 @@ def friends(request):
                 messages.warning(request, "A friend request already exists.")
             else:
                 messages.warning(request, "You are already friends with this user.")
+
             return redirect("friends")
 
         Friendship.objects.create(
@@ -380,6 +439,7 @@ def friends(request):
     context = {
         "page_title": "Friends",
         "page_subtitle": "Add friends and compare your eco progress",
+
         "received_requests": received_requests,
         "sent_requests": sent_requests,
         "friends_data": friends_data,
@@ -401,7 +461,11 @@ def accept_friend(request, friendship_id):
     friendship.status = "accepted"
     friendship.save()
 
-    messages.success(request, f"You are now friends with {friendship.sender.username}.")
+    messages.success(
+        request,
+        f"You are now friends with {friendship.sender.username}."
+    )
+
     return redirect("friends")
 
 
@@ -457,33 +521,9 @@ def remove_friend(request, friendship_id):
     return redirect("friends")
 
 
-@login_required
-def accept_friend(request, friendship_id):
-    friendship = get_object_or_404(
-        Friendship,
-        id=friendship_id,
-        receiver=request.user,
-        status="pending"
-    )
-
-    friendship.status = "accepted"
-    friendship.save()
-
-    return redirect("friends")
-
-
-@login_required
-def remove_friend(request, friendship_id):
-    friendship = get_object_or_404(
-        Friendship,
-        Q(sender=request.user) | Q(receiver=request.user),
-        id=friendship_id
-    )
-
-    friendship.delete()
-
-    return redirect("friends")
-
+# =========================
+# GROUPS + INVITES
+# =========================
 
 @login_required
 def groups(request):
@@ -515,11 +555,20 @@ def groups(request):
         .order_by("-created_at")
     )
 
+    received_invites = (
+        GroupInvite.objects
+        .filter(receiver=request.user, status="pending")
+        .select_related("group", "sender")
+        .order_by("-created_at")
+    )
+
     context = {
         "page_title": "Groups",
-        "page_subtitle": "Create eco groups and compete with friends",
+        "page_subtitle": "Create eco groups and respond to group invites",
+
         "form": form,
         "user_groups": user_groups,
+        "received_invites": received_invites,
     }
 
     return render(request, "pages/groups.html", context)
@@ -551,32 +600,40 @@ def group_detail(request, group_id):
         .aggregate(total=Sum("points"))["total"] or 0
     )
 
+    pending_invites = (
+        GroupInvite.objects
+        .filter(group=group, status="pending")
+        .select_related("receiver", "sender")
+        .order_by("-created_at")
+    )
+
     context = {
         "page_title": group.name,
         "page_subtitle": "Group challenge and leaderboard",
+
         "group": group,
         "members": members,
         "group_total_points": group_total_points,
+        "pending_invites": pending_invites,
     }
 
     return render(request, "pages/group_detail.html", context)
 
 
 @login_required
-def add_group_member(request, group_id):
-    group = get_object_or_404(EcoGroup, id=group_id)
-
-    if group.owner != request.user:
-        messages.error(request, "Only the group owner can add members.")
-        return redirect("group_detail", group_id=group.id)
+def send_group_invite(request, group_id):
+    group = get_object_or_404(EcoGroup, id=group_id, owner=request.user)
 
     if request.method == "POST":
         username = request.POST.get("username", "").strip()
-
         target_user = User.objects.filter(username=username).first()
 
         if not target_user:
             messages.error(request, "User not found.")
+            return redirect("group_detail", group_id=group.id)
+
+        if target_user == request.user:
+            messages.error(request, "You cannot invite yourself.")
             return redirect("group_detail", group_id=group.id)
 
         if group.members.filter(id=target_user.id).exists():
@@ -587,14 +644,70 @@ def add_group_member(request, group_id):
             messages.error(request, "This group already has the maximum of 5 members.")
             return redirect("group_detail", group_id=group.id)
 
-        GroupMember.objects.create(
+        existing_invite = GroupInvite.objects.filter(
             group=group,
-            user=target_user
+            receiver=target_user,
+            status="pending"
+        ).first()
+
+        if existing_invite:
+            messages.warning(request, "This user already has a pending invite.")
+            return redirect("group_detail", group_id=group.id)
+
+        GroupInvite.objects.create(
+            group=group,
+            sender=request.user,
+            receiver=target_user
         )
 
-        messages.success(request, f"{target_user.username} has been added to the group.")
+        messages.success(request, f"Invite sent to {target_user.username}.")
 
     return redirect("group_detail", group_id=group.id)
+
+
+@login_required
+def accept_group_invite(request, invite_id):
+    invite = get_object_or_404(
+        GroupInvite,
+        id=invite_id,
+        receiver=request.user,
+        status="pending"
+    )
+
+    group = invite.group
+
+    if group.member_count() >= 5:
+        messages.error(request, "This group is already full.")
+        return redirect("groups")
+
+    GroupMember.objects.get_or_create(
+        group=group,
+        user=request.user
+    )
+
+    invite.status = "accepted"
+    invite.save()
+
+    messages.success(request, f"You joined '{group.name}'.")
+    return redirect("group_detail", group_id=group.id)
+
+
+@login_required
+def reject_group_invite(request, invite_id):
+    invite = get_object_or_404(
+        GroupInvite,
+        id=invite_id,
+        receiver=request.user,
+        status="pending"
+    )
+
+    group_name = invite.group.name
+
+    invite.status = "rejected"
+    invite.save()
+
+    messages.success(request, f"You rejected the invite to '{group_name}'.")
+    return redirect("groups")
 
 
 @login_required
@@ -646,6 +759,10 @@ def delete_group(request, group_id):
     return redirect("groups")
 
 
+# =========================
+# LEADERBOARD
+# =========================
+
 @login_required
 def leaderboard(request):
     users = (
@@ -668,6 +785,8 @@ def leaderboard(request):
     user_total_actions = 0
 
     for index, ranked_user in enumerate(users, start=1):
+        UserProfile.objects.get_or_create(user=ranked_user)
+
         level_info = get_level_info(ranked_user.total_points)
 
         item = {
@@ -685,13 +804,11 @@ def leaderboard(request):
             user_total_points = ranked_user.total_points
             user_total_actions = ranked_user.total_actions
 
-    top_users = leaderboard_users[:3]
-
     context = {
         "page_title": "Leaderboard",
         "page_subtitle": "See who has the strongest eco impact",
+
         "leaderboard_users": leaderboard_users,
-        "top_users": top_users,
         "user_rank": user_rank,
         "user_total_points": user_total_points,
         "user_total_actions": user_total_actions,
@@ -699,6 +816,10 @@ def leaderboard(request):
 
     return render(request, "pages/leaderboard.html", context)
 
+
+# =========================
+# PROFILE + AVATAR
+# =========================
 
 @login_required
 def profile(request):
@@ -741,23 +862,26 @@ def profile(request):
 
         "total_points": total_points,
         "action_count": action_count,
+
         "progress_percent": progress_percent,
         "impact_level": impact_level,
         "level_info": level_info,
 
         "most_common_category": most_common_category,
         "most_common_category_count": most_common_category_count,
+
         "recent_actions": recent_actions,
     }
 
     return render(request, "pages/profile.html", context)
 
+
 @login_required
 def update_avatar(request):
-    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    profile_obj, created = UserProfile.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
-        form = AvatarForm(request.POST, request.FILES, instance=profile)
+        form = AvatarForm(request.POST, request.FILES, instance=profile_obj)
 
         if form.is_valid():
             form.save()

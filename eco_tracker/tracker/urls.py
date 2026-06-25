@@ -15,10 +15,13 @@ urlpatterns = [
     
     path("groups/", views.groups, name="groups"),
     path("groups/<int:group_id>/", views.group_detail, name="group_detail"),
-    path("groups/<int:group_id>/add-member/", views.add_group_member, name="add_group_member"),
+    path("groups/<int:group_id>/invite/", views.send_group_invite, name="send_group_invite"),
+    path("groups/invites/<int:invite_id>/accept/", views.accept_group_invite, name="accept_group_invite"),
+    path("groups/invites/<int:invite_id>/reject/", views.reject_group_invite, name="reject_group_invite"),
     path("groups/<int:group_id>/remove/<int:user_id>/", views.remove_group_member, name="remove_group_member"),
     path("groups/<int:group_id>/leave/", views.leave_group, name="leave_group"),
     path("groups/<int:group_id>/delete/", views.delete_group, name="delete_group"),
+
     path("leaderboard/", views.leaderboard, name="leaderboard"),
     path("profile/", views.profile, name="profile"),
 

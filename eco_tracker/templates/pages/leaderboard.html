@@ -61,7 +61,7 @@
                 <strong>{{ item.total_points }} pts</strong>
             </div>
         {% empty %}
-            <p class="empty-text">No leaderboard data yet.</p>
+            {% include "components/empty_state.html" with icon="🏅" title="No ranking yet" message="Upload eco actions to appear on the leaderboard." button_url="/upload/" button_text="Upload Action" %}
         {% endfor %}
     </div>
 </div>

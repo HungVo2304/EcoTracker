@@ -79,3 +79,139 @@ def get_level_info(total_points):
             }
 
     return ECO_LEVELS[0]
+
+
+from django.utils import timezone
+from django.db.models import Sum
+
+from .models import DailyMission, UserDailyMission
+
+
+DEFAULT_DAILY_MISSIONS = [
+    {
+        "title": "Recycle something today",
+        "description": "Upload a recycling action such as plastic, paper, or cans.",
+        "category": "recycling",
+        "bonus_points": 10,
+    },
+    {
+        "title": "Use green transport",
+        "description": "Walk, cycle, or use public transport.",
+        "category": "green_transport",
+        "bonus_points": 15,
+    },
+    {
+        "title": "Save energy",
+        "description": "Reduce electricity use or save energy at home.",
+        "category": "saving_energy",
+        "bonus_points": 10,
+    },
+    {
+        "title": "Use a reusable item",
+        "description": "Use a reusable bottle, bag, cup, or container.",
+        "category": "reusable_item",
+        "bonus_points": 10,
+    },
+    {
+        "title": "Clean up your area",
+        "description": "Pick up litter or clean a shared space.",
+        "category": "clean_up",
+        "bonus_points": 15,
+    },
+    {
+        "title": "Plant or care for a tree",
+        "description": "Plant a tree or take care of plants.",
+        "category": "tree_planting",
+        "bonus_points": 20,
+    },
+]
+
+
+def create_default_daily_missions():
+    for mission_data in DEFAULT_DAILY_MISSIONS:
+        DailyMission.objects.get_or_create(
+            title=mission_data["title"],
+            defaults={
+                "description": mission_data["description"],
+                "category": mission_data["category"],
+                "bonus_points": mission_data["bonus_points"],
+                "is_active": True,
+            }
+        )
+
+
+def get_today_missions_for_user(user):
+    create_default_daily_missions()
+
+    today = timezone.localdate()
+
+    active_missions = list(
+        DailyMission.objects
+        .filter(is_active=True)
+        .order_by("id")
+    )
+
+    if not active_missions:
+        return []
+
+    mission_count = min(3, len(active_missions))
+    start_index = today.toordinal() % len(active_missions)
+
+    selected_missions = []
+
+    for i in range(mission_count):
+        selected_missions.append(
+            active_missions[(start_index + i) % len(active_missions)]
+        )
+
+    user_missions = []
+
+    for mission in selected_missions:
+        user_mission, created = UserDailyMission.objects.get_or_create(
+            user=user,
+            mission=mission,
+            date=today
+        )
+
+        user_missions.append(user_mission)
+
+    return user_missions
+
+
+def complete_missions_for_action(user, eco_action):
+    today_missions = get_today_missions_for_user(user)
+    completed_missions = []
+
+    for user_mission in today_missions:
+        if (
+            not user_mission.is_completed
+            and user_mission.mission.category == eco_action.category
+        ):
+            user_mission.is_completed = True
+            user_mission.completed_at = timezone.now()
+            user_mission.completed_action = eco_action
+            user_mission.save()
+
+            completed_missions.append(user_mission)
+
+    return completed_missions
+
+
+def get_today_mission_summary(user):
+    missions = get_today_missions_for_user(user)
+
+    total = len(missions)
+    completed = sum(1 for mission in missions if mission.is_completed)
+
+    bonus_points = sum(
+        mission.mission.bonus_points
+        for mission in missions
+        if mission.is_completed
+    )
+
+    return {
+        "missions": missions,
+        "total": total,
+        "completed": completed,
+        "bonus_points": bonus_points,
+    }

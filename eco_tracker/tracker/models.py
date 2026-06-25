@@ -121,3 +121,79 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s Profile"
+    
+
+class GroupInvite(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("rejected", "Rejected"),
+    ]
+
+    group = models.ForeignKey(
+        EcoGroup,
+        on_delete=models.CASCADE,
+        related_name="invites"
+    )
+    sender = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="sent_group_invites"
+    )
+    receiver = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="received_group_invites"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("group", "receiver")
+
+    def __str__(self):
+        return f"{self.sender.username} invited {self.receiver.username} to {self.group.name}"
+    
+
+class DailyMission(models.Model):
+    title = models.CharField(max_length=120)
+    description = models.TextField(blank=True)
+    category = models.CharField(max_length=50, choices=EcoAction.CATEGORY_CHOICES)
+    bonus_points = models.PositiveIntegerField(default=10)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.title} (+{self.bonus_points} pts)"
+
+
+class UserDailyMission(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="daily_missions"
+    )
+    mission = models.ForeignKey(
+        DailyMission,
+        on_delete=models.CASCADE,
+        related_name="user_missions"
+    )
+    date = models.DateField()
+    is_completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(blank=True, null=True)
+    completed_action = models.ForeignKey(
+        EcoAction,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True
+    )
+
+    class Meta:
+        unique_together = ("user", "mission", "date")
+
+    def __str__(self):
+        status = "Completed" if self.is_completed else "Pending"
+        return f"{self.user.username} - {self.mission.title} - {status}"

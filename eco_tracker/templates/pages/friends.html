@@ -56,7 +56,7 @@
                     </div>
                 </div>
             {% empty %}
-                <p class="empty-text">No received friend requests.</p>
+                {% include "components/empty_state.html" with icon="📩" title="No friend requests" message="When someone sends you a friend request, it will appear here." %}
             {% endfor %}
         </div>
     </div>
@@ -88,7 +88,7 @@
                     </div>
                 </div>
             {% empty %}
-                <p class="empty-text">No pending sent requests.</p>
+                {% include "components/empty_state.html" with icon="⏳" title="No pending requests" message="Friend requests you send will appear here while waiting for a response." %}
             {% endfor %}
         </div>
     </div>
@@ -148,7 +148,7 @@
                 </a>
             </div>
         {% empty %}
-            <p class="empty-text">You have no friends yet.</p>
+            {% include "components/empty_state.html" with icon="👥" title="No friends yet" message="Add friends by username to compare eco progress." %}
         {% endfor %}
     </div>
 </div>
