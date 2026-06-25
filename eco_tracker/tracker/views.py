@@ -650,14 +650,51 @@ def delete_group(request, group_id):
 def leaderboard(request):
     users = (
         User.objects
-        .annotate(total_points=Sum("eco_actions__points"))
-        .order_by("-total_points")
+        .annotate(
+            total_points=Coalesce(
+                Sum("eco_actions__points"),
+                Value(0),
+                output_field=IntegerField()
+            ),
+            total_actions=Count("eco_actions")
+        )
+        .order_by("-total_points", "-total_actions", "username")
     )
+
+    leaderboard_users = []
+
+    user_rank = None
+    user_total_points = 0
+    user_total_actions = 0
+
+    for index, ranked_user in enumerate(users, start=1):
+        level_info = get_level_info(ranked_user.total_points)
+
+        item = {
+            "rank": index,
+            "user": ranked_user,
+            "total_points": ranked_user.total_points,
+            "total_actions": ranked_user.total_actions,
+            "level_info": level_info,
+        }
+
+        leaderboard_users.append(item)
+
+        if ranked_user == request.user:
+            user_rank = index
+            user_total_points = ranked_user.total_points
+            user_total_actions = ranked_user.total_actions
+
+    top_users = leaderboard_users[:3]
 
     context = {
         "page_title": "Leaderboard",
-        "page_subtitle": "See who has the highest eco impact",
-        "users": users,
+        "page_subtitle": "See who has the strongest eco impact",
+        "leaderboard_users": leaderboard_users,
+        "top_users": top_users,
+        "user_rank": user_rank,
+        "user_total_points": user_total_points,
+        "user_total_actions": user_total_actions,
     }
 
     return render(request, "pages/leaderboard.html", context)

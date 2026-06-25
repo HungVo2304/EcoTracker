@@ -2,19 +2,66 @@
 
 {% block content %}
 
-<div class="card">
-    <h2>Eco Leaderboard</h2>
+<section class="dashboard-grid">
+    <div class="card stat-card">
+        <p class="card-label">Your Rank</p>
 
-    <div class="leaderboard-list">
-        {% for ranked_user in users %}
+        {% if user_rank %}
+            <h2>#{{ user_rank }}</h2>
+        {% else %}
+            <h2>—</h2>
+        {% endif %}
+
+        <p class="muted-text">Your position in the global leaderboard.</p>
+    </div>
+
+    <div class="card stat-card">
+        <p class="card-label">Your Points</p>
+        <h2>{{ user_total_points }} pts</h2>
+        <p class="muted-text">Your total eco score.</p>
+    </div>
+
+    <div class="card stat-card">
+        <p class="card-label">Your Actions</p>
+        <h2>{{ user_total_actions }}</h2>
+        <p class="muted-text">Eco actions you uploaded.</p>
+    </div>
+</section>
+
+<div class="card">
+    <div class="card-header">
+        <div>
+            <p class="card-label">Global Leaderboard</p>
+            <h2>Eco Rankings</h2>
+        </div>
+    </div>
+
+    <div class="action-list">
+        {% for item in leaderboard_users %}
             <div class="action-item">
-                <div>
-                    <h4>#{{ forloop.counter }} {{ ranked_user.username }}</h4>
-                    <p>Eco participant</p>
+                <div class="friend-avatar">
+                    {{ item.user.username|first|upper }}
                 </div>
 
-                <strong>{{ ranked_user.total_points|default:0 }} pts</strong>
+                <div class="action-content">
+                    <h4>
+                        #{{ item.rank }} · {{ item.user.username }}
+
+                        {% if item.user == user %}
+                            <span class="level-badge">You</span>
+                        {% endif %}
+                    </h4>
+
+                    <p>
+                        {{ item.level_info.icon }} {{ item.level_info.name }}
+                        · {{ item.total_actions }} actions
+                    </p>
+                </div>
+
+                <strong>{{ item.total_points }} pts</strong>
             </div>
+        {% empty %}
+            <p class="empty-text">No leaderboard data yet.</p>
         {% endfor %}
     </div>
 </div>
