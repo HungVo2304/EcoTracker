@@ -2,29 +2,30 @@
 
 {% block content %}
 
-<div class="friends-layout">
-
+<div class="friends-layout" style="margin-bottom: 32px;">
     <div class="card form-card">
-        <h2>Add Friend</h2>
-        <p class="muted-text">Search by username and send a friend request.</p>
+        <p class="card-label">Connect</p>
+        <h2 style="font-size: 22px; font-weight: 800; color: var(--accent); margin-bottom: 8px;">Add Friend</h2>
+        <p class="muted-text" style="margin-bottom: 20px; font-size: 13px;">Search by username and send a friend request.</p>
 
         <form method="post" class="eco-form friend-form">
             {% csrf_token %}
-            <input type="text" name="username" placeholder="Enter username..." required>
-            <button type="submit" class="upload-btn">Send Request</button>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <input type="text" name="username" placeholder="Enter username..." required style="flex: 1; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-size: 14px; background: var(--panel);">
+                <button type="submit" class="upload-btn" style="padding: 12px 20px;">Send Request</button>
+            </div>
         </form>
     </div>
 
-    <div class="card">
+    <div class="card stat-card" style="justify-content: center;">
         <p class="card-label">Your Score</p>
-        <h2>{{ user_total_points }} pts</h2>
+        <h2 style="font-size: 36px; font-weight: 800; color: var(--emerald); font-family: 'Outfit', sans-serif; margin: 8px 0 4px;">{{ user_total_points }} pts</h2>
         <p class="muted-text">Use this to compare your progress with friends.</p>
     </div>
-
 </div>
 
-<div class="friends-sections">
-
+<div class="friends-sections" style="margin-bottom: 32px;">
+    <!-- Received Requests -->
     <div class="card">
         <div class="card-header">
             <div>
@@ -36,9 +37,13 @@
         <div class="friend-list">
             {% for request_item in received_requests %}
                 <div class="friend-item">
-                    <div class="friend-avatar">
-                        {{ request_item.sender.username|first|upper }}
-                    </div>
+                    {% if request_item.sender.profile.avatar %}
+                        <img src="{{ request_item.sender.profile.avatar.url }}" alt="{{ request_item.sender.username }}" class="friend-avatar" style="object-fit: cover;">
+                    {% else %}
+                        <div class="friend-avatar">
+                            {{ request_item.sender.username|first|upper }}
+                        </div>
+                    {% endif %}
 
                     <div class="friend-info">
                         <h4>{{ request_item.sender.username }}</h4>
@@ -49,7 +54,6 @@
                         <a href="{% url 'accept_friend' request_item.id %}">
                             <button class="small-btn">Accept</button>
                         </a>
-
                         <a href="{% url 'reject_friend' request_item.id %}">
                             <button class="danger-btn">Reject</button>
                         </a>
@@ -61,6 +65,7 @@
         </div>
     </div>
 
+    <!-- Sent Requests -->
     <div class="card">
         <div class="card-header">
             <div>
@@ -72,9 +77,13 @@
         <div class="friend-list">
             {% for request_item in sent_requests %}
                 <div class="friend-item">
-                    <div class="friend-avatar">
-                        {{ request_item.receiver.username|first|upper }}
-                    </div>
+                    {% if request_item.receiver.profile.avatar %}
+                        <img src="{{ request_item.receiver.profile.avatar.url }}" alt="{{ request_item.receiver.username }}" class="friend-avatar" style="object-fit: cover;">
+                    {% else %}
+                        <div class="friend-avatar">
+                            {{ request_item.receiver.username|first|upper }}
+                        </div>
+                    {% endif %}
 
                     <div class="friend-info">
                         <h4>{{ request_item.receiver.username }}</h4>
@@ -88,13 +97,13 @@
                     </div>
                 </div>
             {% empty %}
-                {% include "components/empty_state.html" with icon="⏳" title="No pending requests" message="Friend requests you send will appear here while waiting for a response." %}
+                {% include "components/empty_state.html" with icon="⏳" title="No pending requests" message="Requests you send will appear here while waiting for a response." %}
             {% endfor %}
         </div>
     </div>
-
 </div>
 
+<!-- Friends List with Visual Comparison Bars -->
 <div class="card">
     <div class="card-header">
         <div>
@@ -107,9 +116,13 @@
         {% for item in friends_data %}
             <div class="friend-card">
                 <div class="friend-card-top">
-                    <div class="friend-avatar large">
-                        {{ item.friend.username|first|upper }}
-                    </div>
+                    {% if item.friend.profile.avatar %}
+                        <img src="{{ item.friend.profile.avatar.url }}" alt="{{ item.friend.username }}" class="friend-avatar large" style="object-fit: cover;">
+                    {% else %}
+                        <div class="friend-avatar large">
+                            {{ item.friend.username|first|upper }}
+                        </div>
+                    {% endif %}
 
                     <div>
                         <h3>{{ item.friend.username }}</h3>
@@ -117,38 +130,48 @@
                     </div>
                 </div>
 
-                <div class="compare-box">
-                    <div>
-                        <p>Your Points</p>
+                <!-- Score Comparison Bars -->
+                <div class="compare-container">
+                    <div class="compare-row">
+                        <span>You</span>
                         <strong>{{ user_total_points }} pts</strong>
                     </div>
-
-                    <div>
-                        <p>{{ item.friend.username }}'s Points</p>
+                    <div class="progress-bar-container" style="height: 6px; margin: 4px 0 10px 0; background: #e2e8f0;">
+                        <div class="progress-bar-fill" style="width: {{ item.user_percent }}%;"></div>
+                    </div>
+                    
+                    <div class="compare-row">
+                        <span>{{ item.friend.username }}</span>
                         <strong>{{ item.friend_total_points }} pts</strong>
+                    </div>
+                    <div class="progress-bar-container" style="height: 6px; margin: 4px 0 0 0; background: #e2e8f0;">
+                        <div class="progress-bar-fill" style="width: {{ item.friend_percent }}%; background: var(--text-muted);"></div>
                     </div>
                 </div>
 
+                <!-- Comparison Text Banner -->
                 {% if item.difference > 0 %}
                     <p class="compare-result positive">
-                        You are ahead by {{ item.difference }} pts.
+                        You are ahead by {{ item.difference }} pts
                     </p>
                 {% elif item.difference < 0 %}
                     <p class="compare-result negative">
-                        Your friend is ahead by {{ item.difference|stringformat:"+d"|slice:"1:" }} pts.
+                        Friend is ahead by {{ item.difference|stringformat:"+d"|slice:"1:" }} pts
                     </p>
                 {% else %}
                     <p class="compare-result neutral">
-                        You both have the same score.
+                        You both have the same score
                     </p>
                 {% endif %}
 
-                <a href="{% url 'remove_friend' item.friendship.id %}">
-                    <button class="danger-btn full-btn">Remove Friend</button>
+                <a href="{% url 'remove_friend' item.friendship.id %}" style="margin-top: 8px;">
+                    <button class="danger-btn full-btn" style="padding: 10px;">Remove Friend</button>
                 </a>
             </div>
         {% empty %}
-            {% include "components/empty_state.html" with icon="👥" title="No friends yet" message="Add friends by username to compare eco progress." %}
+            <div style="grid-column: 1 / -1; width: 100%;">
+                {% include "components/empty_state.html" with icon="👥" title="No friends yet" message="Add friends by username to compare eco progress." %}
+            </div>
         {% endfor %}
     </div>
 </div>

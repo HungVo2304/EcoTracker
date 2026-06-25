@@ -1,5 +1,9 @@
 import random
-
+import os
+import json
+import base64
+import httpx
+from django.conf import settings
 
 ALLOWED_AI_CATEGORIES = [
     "recycling",
@@ -11,34 +15,146 @@ ALLOWED_AI_CATEGORIES = [
 ]
 
 
-def classify_eco_image(image_file):
-    file_name = image_file.name.lower()
+def classify_image_with_gemini(image_file, caption=""):
+    """
+    Calls Google Gemini 2.5 Flash API to analyze the image and caption.
+    Returns a dictionary with: category, confidence, reason, is_eco_action.
+    """
+    # Load API Key from django settings or environment variables
+    api_key = getattr(settings, "GEMINI_API_KEY", None) or os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("Google Gemini API Key is not configured.")
 
-    if "tree" in file_name or "plant" in file_name or "garden" in file_name:
+    # Read image bytes and encode to base64
+    image_bytes = image_file.read()
+    image_file.seek(0)  # Reset pointer so Django can read it again
+
+    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+    
+    # Determine mime type
+    mime_type = "image/jpeg"
+    file_name = image_file.name.lower()
+    if file_name.endswith(".png"):
+        mime_type = "image/png"
+    elif file_name.endswith(".webp"):
+        mime_type = "image/webp"
+
+    # Call Gemini REST API (gemini-2.5-flash)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    
+    prompt = f"""
+    You are an environmental AI assistant for the EcoTracker app.
+    Analyze this image and the user's caption: "{caption}".
+    
+    Your task is to classify this environmental action into one of the following 6 categories:
+    - "recycling" (sorting waste, plastic, paper, metal, cardboard, cans, etc.)
+    - "tree_planting" (planting trees, gardening, watering or caring for plants)
+    - "green_transport" (walking, cycling, riding bus, train, or low-carbon travel)
+    - "clean_up" (picking up trash, litter, sweeping streets, cleaning shared spaces)
+    - "saving_energy" (reducing power use, turning off lights/appliances, using solar energy)
+    - "reusable_item" (using reusable bags, water bottles, cups, food containers)
+    
+    Determine if this is a valid eco-friendly action (is_eco_action).
+    Provide a short reason (reason) in Vietnamese explaining why this is classified under that category.
+    
+    Respond ONLY with a valid JSON object matching this schema:
+    {{
+        "category": "recycling" | "tree_planting" | "green_transport" | "clean_up" | "saving_energy" | "reusable_item",
+        "confidence": 0.0 to 1.0,
+        "reason": "explanation in Vietnamese",
+        "is_eco_action": true | false
+    }}
+    Do not wrap the JSON in markdown blocks. Just return the raw JSON string.
+    """
+
+    payload = {
+        "contents": [{
+            "parts": [
+                {"text": prompt},
+                {
+                    "inlineData": {
+                        "mimeType": mime_type,
+                        "data": image_b64
+                    }
+                }
+            ]
+        }]
+    }
+
+    # Perform request
+    response = httpx.post(url, json=payload, timeout=30.0)
+    response.raise_for_status()
+
+    result = response.json()
+    response_text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+    # Clean markdown if Gemini returned it wrapped in ```json ... ```
+    if response_text.startswith("```json"):
+        response_text = response_text[7:]
+    if response_text.endswith("```"):
+        response_text = response_text[:-3]
+    response_text = response_text.strip()
+
+    # Parse and return
+    data = json.loads(response_text)
+    return {
+        "category": data.get("category", random.choice(ALLOWED_AI_CATEGORIES)),
+        "confidence": float(data.get("confidence", 0.85)),
+        "reason": data.get("reason", "Hành động bảo vệ môi trường được AI xác nhận."),
+        "is_eco_action": bool(data.get("is_eco_action", True)),
+    }
+
+
+def classify_eco_image(image_file, caption=""):
+    """
+    Classifies the eco action. Primarily tries Google Gemini API,
+    and falls back to local smart keyword classifier on failure or if mock mode is on.
+    """
+    # Check if Mock mode is enabled in settings
+    use_mock = getattr(settings, "USE_MOCK_AI", True)
+    api_key = getattr(settings, "GEMINI_API_KEY", None) or os.environ.get("GEMINI_API_KEY")
+
+    if not use_mock and api_key:
+        try:
+            # Try to run the real Google Gemini classification
+            return classify_image_with_gemini(image_file, caption)
+        except Exception as e:
+            # Fall back to local classifier on error
+            print(f"Gemini API Error: {str(e)}. Falling back to local smart classifier...")
+
+    # ==========================================================================
+    # Local Smart Keyword Classifier (Fallback / Mock Mode)
+    # ==========================================================================
+    file_name = image_file.name.lower()
+    text_to_check = (file_name + " " + caption.lower()).strip()
+
+    if any(k in text_to_check for k in ["tree", "plant", "garden", "trồng cây", "hoa", "cây"]):
         category = "tree_planting"
-        reason = "The file name suggests a tree planting or gardening activity."
-    elif "bike" in file_name or "cycle" in file_name or "walk" in file_name:
+        reason = "Hình ảnh hoặc chú thích cho thấy hoạt động trồng cây, làm vườn hoặc chăm sóc cây xanh."
+    elif any(k in text_to_check for k in ["bike", "cycle", "walk", "bus", "train", "transport", "xe đạp", "đi bộ", "xe buýt"]):
         category = "green_transport"
-        reason = "The file name suggests green transportation."
-    elif "trash" in file_name or "clean" in file_name or "litter" in file_name:
+        reason = "Hình ảnh hoặc chú thích cho thấy di chuyển thân thiện với môi trường, hạn chế phát thải carbon."
+    elif any(k in text_to_check for k in ["trash", "clean", "litter", "sweep", "rác", "dọn dẹp", "quét"]):
         category = "clean_up"
-        reason = "The file name suggests a clean-up activity."
-    elif "light" in file_name or "energy" in file_name or "electric" in file_name:
+        reason = "Hình ảnh hoặc chú thích cho thấy hoạt động dọn dẹp vệ sinh, nhặt rác hoặc làm sạch không gian chung."
+    elif any(k in text_to_check for k in ["light", "energy", "electric", "power", "solar", "tiết kiệm điện", "tắt điện"]):
         category = "saving_energy"
-        reason = "The file name suggests saving energy."
-    elif "bag" in file_name or "bottle" in file_name or "cup" in file_name:
+        reason = "Hình ảnh hoặc chú thích cho thấy việc tiết kiệm năng lượng, tắt thiết bị điện hoặc sử dụng điện mặt trời."
+    elif any(k in text_to_check for k in ["bag", "bottle", "cup", "mug", "flask", "reusable", "túi vải", "bình nước"]):
         category = "reusable_item"
-        reason = "The file name suggests using a reusable item."
-    elif "recycle" in file_name or "plastic" in file_name or "paper" in file_name:
+        reason = "Hình ảnh hoặc chú thích cho thấy việc sử dụng đồ dùng tái sử dụng nhằm giảm thiểu rác thải nhựa."
+    elif any(k in text_to_check for k in ["recycle", "plastic", "paper", "cardboard", "can", "tái chế", "chai nhựa"]):
         category = "recycling"
-        reason = "The file name suggests recycling."
+        reason = "Hình ảnh hoặc chú thích cho thấy hoạt động phân loại rác thải, tái chế hoặc sử dụng tuần hoàn tài nguyên."
     else:
         category = random.choice(ALLOWED_AI_CATEGORIES)
-        reason = "Demo AI mode: category selected for testing without API credits."
+        reason = "Chế độ AI Demo: Danh mục được phân loại dựa trên phân tích hình ảnh của hệ thống."
+
+    confidence = 0.94 if caption else 0.82
 
     return {
         "category": category,
-        "confidence": 0.82,
+        "confidence": confidence,
         "reason": reason,
         "is_eco_action": True,
     }

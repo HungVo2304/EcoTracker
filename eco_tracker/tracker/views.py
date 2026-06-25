@@ -5,7 +5,7 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
-from django.db.models import Sum, Count, Q, Value, IntegerField
+from django.db.models import Sum, Count, Q, Value, IntegerField, Subquery, OuterRef, F, ExpressionWrapper
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.http import JsonResponse
@@ -18,6 +18,12 @@ from .models import (
     GroupMember,
     UserProfile,
     GroupInvite,
+    UserDailyMission,
+    DailyMission,
+    Badge,
+    UserBadge,
+    EcoActionLike,
+    GroupWeeklyQuest,
 )
 
 from .forms import (
@@ -31,7 +37,13 @@ from .utils import (
     get_level_info,
     complete_missions_for_action,
     get_today_mission_summary,
+    get_user_total_points,
+    update_user_streak,
+    check_and_award_badges,
+    get_or_create_weekly_quest,
+    create_default_badges,
 )
+
 
 
 # =========================
@@ -72,7 +84,7 @@ def dashboard(request):
     actions = EcoAction.objects.filter(user=request.user).order_by("-created_at")
     recent_actions = actions[:5]
 
-    total_points = actions.aggregate(total=Sum("points"))["total"] or 0
+    total_points = get_user_total_points(request.user)
     action_count = actions.count()
 
     level_info = get_level_info(total_points)
@@ -201,27 +213,60 @@ def upload_action(request):
         if form.is_valid():
             eco_action = form.save(commit=False)
             eco_action.user = request.user
+            
+            # Run AI classification automatically
+            ai_result = classify_eco_image(eco_action.image, eco_action.caption)
+            
+            if not ai_result["is_eco_action"]:
+                messages.error(
+                    request,
+                    f"AI Analysis Rejected: This action does not appear to be eco-friendly. Reason: {ai_result['reason']}"
+                )
+                context = {
+                    "page_title": "Upload Action",
+                    "page_subtitle": "Upload your eco-friendly action and earn points",
+                    "form": form,
+                }
+                return render(request, "pages/upload_action.html", context)
+            
+            # Automatically assign the category determined by AI
+            eco_action.category = ai_result["category"]
             eco_action.save()
+
+            # Update streak and apply points multiplier
+            streak_count, multiplier = update_user_streak(request.user)
+            if multiplier > 1.0:
+                eco_action.points = int(eco_action.points * multiplier)
+                eco_action.save()
+
+            # Check and award badges
+            new_badges = check_and_award_badges(request.user)
 
             completed_missions = complete_missions_for_action(
                 request.user,
                 eco_action
             )
 
+            category_name = eco_action.get_category_display()
+            msg = f"Action classified as {category_name}! +{eco_action.points} points awarded"
+            
+            if multiplier > 1.0:
+                msg += f" (includes {multiplier}x multiplier for {streak_count}-day 🔥 streak!)"
+            elif streak_count > 1:
+                msg += f" (🔥 {streak_count}-day streak!)"
+                
             if completed_missions:
                 mission_titles = ", ".join(
                     mission.mission.title for mission in completed_missions
                 )
-
-                messages.success(
-                    request,
-                    f"Eco action uploaded! +{eco_action.points} points. Daily mission completed: {mission_titles}."
-                )
-            else:
-                messages.success(
-                    request,
-                    f"Eco action uploaded successfully! +{eco_action.points} points added."
-                )
+                msg += f". Daily mission completed: {mission_titles}."
+                
+            if new_badges:
+                badge_names = ", ".join(f"{b.icon} {b.name}" for b in new_badges)
+                msg += f" 🏆 Achievements Unlocked: {badge_names}!"
+                
+            msg += f" AI Explanation: {ai_result['reason']}"
+            messages.success(request, msg)
 
             return redirect("dashboard")
         else:
@@ -257,11 +302,30 @@ def edit_action(request, action_id):
         )
 
         if form.is_valid():
-            updated_action = form.save()
+            updated_action = form.save(commit=False)
+            
+            # Automatically re-classify when editing
+            ai_result = classify_eco_image(updated_action.image, updated_action.caption)
+            
+            if not ai_result["is_eco_action"]:
+                messages.error(
+                    request,
+                    f"AI Analysis Rejected: The updated action does not appear to be eco-friendly. Reason: {ai_result['reason']}"
+                )
+                context = {
+                    "page_title": "Edit Eco Action",
+                    "page_subtitle": "Update your uploaded action",
+                    "form": form,
+                    "eco_action": eco_action,
+                }
+                return render(request, "pages/edit_action.html", context)
+                
+            updated_action.category = ai_result["category"]
+            updated_action.save()
 
             messages.success(
                 request,
-                f"Eco action updated successfully. New score: +{updated_action.points} pts."
+                f"Eco action updated and re-classified as {updated_action.get_category_display()}! New score: +{updated_action.points} pts."
             )
 
             return redirect("my_progress")
@@ -316,7 +380,7 @@ def delete_action(request, action_id):
 def my_progress(request):
     actions = EcoAction.objects.filter(user=request.user).order_by("-created_at")
 
-    total_points = actions.aggregate(total=Sum("points"))["total"] or 0
+    total_points = get_user_total_points(request.user)
     action_count = actions.count()
 
     level_info = get_level_info(total_points)
@@ -354,11 +418,7 @@ def my_progress(request):
 
 @login_required
 def friends(request):
-    user_total_points = (
-        EcoAction.objects
-        .filter(user=request.user)
-        .aggregate(total=Sum("points"))["total"] or 0
-    )
+    user_total_points = get_user_total_points(request.user)
 
     if request.method == "POST":
         username = request.POST.get("username", "").strip()
@@ -423,19 +483,21 @@ def friends(request):
         else:
             friend = friendship.sender
 
-        friend_total_points = (
-            EcoAction.objects
-            .filter(user=friend)
-            .aggregate(total=Sum("points"))["total"] or 0
-        )
+        friend_total_points = get_user_total_points(friend)
 
         difference = user_total_points - friend_total_points
+
+        max_points = max(user_total_points, friend_total_points, 1)
+        user_percent = int((user_total_points / max_points) * 100)
+        friend_percent = int((friend_total_points / max_points) * 100)
 
         friends_data.append({
             "friendship": friendship,
             "friend": friend,
             "friend_total_points": friend_total_points,
             "difference": difference,
+            "user_percent": user_percent,
+            "friend_percent": friend_percent,
         })
 
     context = {
@@ -584,23 +646,17 @@ def group_detail(request, group_id):
         members=request.user
     )
 
-    members = (
-        group.members
-        .annotate(
-            total_points=Coalesce(
-                Sum("eco_actions__points"),
-                Value(0),
-                output_field=IntegerField()
-            )
-        )
-        .order_by("-total_points", "username")
-    )
+    members = list(group.members.all())
+    for member in members:
+        member.total_points = get_user_total_points(member)
+    members.sort(key=lambda x: (-x.total_points, x.username))
 
-    group_total_points = (
-        EcoAction.objects
-        .filter(user__in=group.members.all())
-        .aggregate(total=Sum("points"))["total"] or 0
-    )
+    group_total_points = sum(member.total_points for member in members)
+    target_points = 2000
+    target_percent = min(100, int((group_total_points / target_points) * 100))
+
+    # Retrieve or generate the Group Weekly Quest
+    quest, quest_count, quest_percent = get_or_create_weekly_quest(group)
 
     pending_invites = (
         GroupInvite.objects
@@ -617,6 +673,11 @@ def group_detail(request, group_id):
         "members": members,
         "group_total_points": group_total_points,
         "pending_invites": pending_invites,
+        "target_points": target_points,
+        "target_percent": target_percent,
+        "quest": quest,
+        "quest_count": quest_count,
+        "quest_percent": quest_percent,
     }
 
     return render(request, "pages/group_detail.html", context)
@@ -767,15 +828,21 @@ def delete_group(request, group_id):
 
 @login_required
 def leaderboard(request):
+    actions_subquery = EcoAction.objects.filter(user=OuterRef("pk")).values("user").annotate(total=Sum("points")).values("total")
+    missions_subquery = UserDailyMission.objects.filter(user=OuterRef("pk"), is_completed=True).values("user").annotate(total=Sum("mission__bonus_points")).values("total")
+
     users = (
         User.objects
         .annotate(
-            total_points=Coalesce(
-                Sum("eco_actions__points"),
-                Value(0),
+            action_points=Coalesce(Subquery(actions_subquery), Value(0)),
+            bonus_points=Coalesce(Subquery(missions_subquery), Value(0)),
+            total_actions=Count("eco_actions", distinct=True)
+        )
+        .annotate(
+            total_points=ExpressionWrapper(
+                F("action_points") + F("bonus_points"),
                 output_field=IntegerField()
-            ),
-            total_actions=Count("eco_actions")
+            )
         )
         .order_by("-total_points", "-total_actions", "username")
     )
@@ -825,11 +892,11 @@ def leaderboard(request):
 
 @login_required
 def profile(request):
-    UserProfile.objects.get_or_create(user=request.user)
+    profile_obj, created = UserProfile.objects.get_or_create(user=request.user)
 
     actions = EcoAction.objects.filter(user=request.user).order_by("-created_at")
 
-    total_points = actions.aggregate(total=Sum("points"))["total"] or 0
+    total_points = get_user_total_points(request.user)
     action_count = actions.count()
 
     level_info = get_level_info(total_points)
@@ -858,6 +925,45 @@ def profile(request):
 
     recent_actions = actions[:4]
 
+    # Fetch Earned and Locked Badges
+    create_default_badges()  # Ensure badges exist
+    earned_badges = UserBadge.objects.filter(user=request.user).select_related("badge")
+    earned_badge_ids = set(earned_badges.values_list("badge_id", flat=True))
+    all_badges = Badge.objects.all()
+
+    badges_list = []
+    for b in all_badges:
+        badges_list.append({
+            "badge": b,
+            "is_earned": b.id in earned_badge_ids,
+            "earned_at": earned_badges.filter(badge=b).first().earned_at if b.id in earned_badge_ids else None
+        })
+
+    # Green Habit Analytics
+    category_stats = (
+        actions
+        .values("category")
+        .annotate(count=Count("id"))
+        .order_by("-count")
+    )
+    
+    habit_analytics = []
+    colors = ["#4e8054", "#10b981", "#2e623c", "#f59e0b", "#3b82f6", "#8b5cf6"]
+    
+    cumulative_percent = 0
+    for index, item in enumerate(category_stats):
+        pct = int((item["count"] / action_count) * 100) if action_count > 0 else 0
+        color = colors[index % len(colors)]
+        habit_analytics.append({
+            "name": category_map.get(item["category"], item["category"]),
+            "count": item["count"],
+            "percent": pct,
+            "color": color,
+            "start_percent": cumulative_percent,
+            "end_percent": cumulative_percent + pct
+        })
+        cumulative_percent += pct
+
     context = {
         "page_title": "Profile",
         "page_subtitle": "Your personal eco profile and achievements",
@@ -873,6 +979,9 @@ def profile(request):
         "most_common_category_count": most_common_category_count,
 
         "recent_actions": recent_actions,
+        "profile": profile_obj,
+        "badges": badges_list,
+        "habit_analytics": habit_analytics,
     }
 
     return render(request, "pages/profile.html", context)
@@ -902,6 +1011,7 @@ def ai_classify_action(request):
         )
 
     image = request.FILES.get("image")
+    caption = request.POST.get("caption", "")
 
     if not image:
         return JsonResponse(
@@ -910,7 +1020,7 @@ def ai_classify_action(request):
         )
 
     try:
-        result = classify_eco_image(image)
+        result = classify_eco_image(image, caption=caption)
 
         return JsonResponse({
             "success": True,
@@ -925,3 +1035,71 @@ def ai_classify_action(request):
             "success": False,
             "error": str(error),
         }, status=500)
+
+
+@login_required
+def eco_feed(request):
+    # Find user's friends (accepted friendships)
+    friendships = Friendship.objects.filter(
+        Q(sender=request.user) | Q(receiver=request.user),
+        status="accepted"
+    )
+    friend_ids = []
+    for f in friendships:
+        if f.sender == request.user:
+            friend_ids.append(f.receiver.id)
+        else:
+            friend_ids.append(f.sender.id)
+            
+    # Find user's group members
+    group_member_ids = []
+    user_groups = EcoGroup.objects.filter(members=request.user)
+    for g in user_groups:
+        group_member_ids.extend(g.members.values_list("id", flat=True))
+        
+    # Combine all visible user IDs: user, friends, group members
+    visible_user_ids = list(set([request.user.id] + friend_ids + group_member_ids))
+    
+    # Fetch recent actions, annotated with likes counts and whether current user liked it
+    from django.db.models import Exists, OuterRef
+    
+    actions = (
+        EcoAction.objects
+        .filter(user_id__in=visible_user_ids)
+        .select_related("user", "user__profile")
+        .annotate(
+            likes_count=Count("likes", distinct=True),
+            liked_by_user=Exists(EcoActionLike.objects.filter(action=OuterRef("pk"), user=request.user))
+        )
+        .order_by("-created_at")
+    )
+    
+    context = {
+        "page_title": "Eco Feed",
+        "page_subtitle": "See the environmental impact of your community",
+        "actions": actions[:30],
+    }
+    return render(request, "pages/eco_feed.html", context)
+
+
+@login_required
+def like_action(request, action_id):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Invalid method."}, status=405)
+        
+    action = get_object_or_404(EcoAction, id=action_id)
+    like, created = EcoActionLike.objects.get_or_create(user=request.user, action=action)
+    
+    if not created:
+        # Already liked, unlike it
+        like.delete()
+        liked = False
+    else:
+        liked = True
+        
+    likes_count = action.likes.count()
+    return JsonResponse({
+        "success": True,
+        "liked": liked,
+        "likes_count": likes_count
+    })

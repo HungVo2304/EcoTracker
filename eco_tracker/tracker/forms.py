@@ -20,7 +20,7 @@ ALLOWED_CONTENT_TYPES = [
 class EcoActionForm(forms.ModelForm):
     class Meta:
         model = EcoAction
-        fields = ["image", "caption", "category"]
+        fields = ["image", "caption"]
 
         widgets = {
             "image": forms.ClearableFileInput(attrs={

@@ -8,6 +8,15 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
+<script>
+    // Immediate script to apply theme before rendering
+    (function() {
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        if (currentTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+        }
+    })();
+</script>
 
 <div class="app-layout">
     {% include "components/sidebar.html" %}
@@ -29,6 +38,28 @@
     {% endblock %}
 </main>
 </div>
+
+<script>
+    // Theme Toggle Logic
+    document.addEventListener("DOMContentLoaded", function() {
+        const themeToggleBtn = document.getElementById("themeToggleBtn");
+        if (themeToggleBtn) {
+            // Set initial icon
+            if (document.body.classList.contains("dark-mode")) {
+                themeToggleBtn.textContent = "☀️";
+            } else {
+                themeToggleBtn.textContent = "🌙";
+            }
+
+            themeToggleBtn.addEventListener("click", function() {
+                document.body.classList.toggle("dark-mode");
+                const isDark = document.body.classList.contains("dark-mode");
+                localStorage.setItem("theme", isDark ? "dark" : "light");
+                themeToggleBtn.textContent = isDark ? "☀️" : "🌙";
+            });
+        }
+    });
+</script>
 
 </body>
 </html>

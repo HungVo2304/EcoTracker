@@ -2,31 +2,102 @@
 
 {% block content %}
 
-<section class="dashboard-grid">
-    {% include "components/stat_card.html" with label="Group Total Points" value=group_total_points subtitle="combined eco score" %}
-    {% include "components/stat_card.html" with label="Members" value=group.member_count subtitle="maximum 5 members" %}
+<!-- Statistics Overview -->
+<section class="dashboard-grid" style="margin-bottom: 28px;">
+    <div class="card stat-card">
+        <p class="card-label">Group Total Score</p>
+        <h2 style="color: var(--primary);">{{ group_total_points }} pts</h2>
+        <p class="muted-text">Combined score of all members.</p>
+    </div>
+    
+    <div class="card stat-card">
+        <p class="card-label">Members</p>
+        <h2 style="color: var(--accent);">{{ group.member_count }} / 5</h2>
+        <p class="muted-text">Maximum of 5 members allowed.</p>
+    </div>
 
     <div class="card stat-card">
         <p class="card-label">Challenge Status</p>
-
         {% if group.member_count < 2 %}
-            <h2>Waiting</h2>
-            <span>Need at least 2 members</span>
+            <h2 style="color: var(--warning);">Waiting</h2>
+            <p class="muted-text">Need at least 2 members to activate.</p>
         {% else %}
-            <h2>Active</h2>
-            <span>Group challenge is running</span>
+            <h2 style="color: var(--emerald);">Active</h2>
+            <p class="muted-text">Group challenge is currently running.</p>
         {% endif %}
     </div>
 </section>
 
+<!-- Team Target Challenge Card -->
+<div class="card group-challenge-card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <div>
+            <p class="card-label" style="color: rgba(255, 255, 255, 0.75);">Group Challenge</p>
+            <h2 style="color: white; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Team Target: {{ target_points }} Points</h2>
+        </div>
+        <span class="level-badge" style="background: rgba(255, 255, 255, 0.2); color: white;">
+            {{ target_percent }}% Completed
+        </span>
+    </div>
+
+    <div class="group-challenge-progress">
+        <div class="group-progress-bar-bg">
+            <div class="group-progress-bar-fill" style="width: {{ target_percent }}%;"></div>
+        </div>
+    </div>
+
+    <div class="group-challenge-stats">
+        <span>Current: {{ group_total_points }} pts</span>
+        <span>Goal: {{ target_points }} pts</span>
+    </div>
+</div>
+
+<!-- Group Weekly Quest Card -->
+{% if quest %}
+<div class="card" style="margin-bottom: 32px; border: 1.5px solid var(--primary); background: linear-gradient(135deg, var(--primary-light), var(--accent-light));">
+    <div class="card-header" style="margin-bottom: 12px;">
+        <div>
+            <p class="card-label" style="color: var(--primary); font-weight: 700;">Weekly Quest</p>
+            <h2 style="font-size: 20px; font-weight: 800; color: var(--accent); letter-spacing: -0.3px; margin: 4px 0 2px;">
+                {% if quest.category == 'recycling' %}♻️ Recycle together!
+                {% elif quest.category == 'tree_planting' %}🌳 Plant trees together!
+                {% elif quest.category == 'green_transport' %}🚲 Ride green together!
+                {% elif quest.category == 'clean_up' %}🧹 Clean up together!
+                {% elif quest.category == 'saving_energy' %}💡 Save energy together!
+                {% elif quest.category == 'reusable_item' %}🛍️ Use reusable items!
+                {% else %}🌱 Green together!{% endif %}
+            </h2>
+            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.4; margin: 0;">
+                All members' actions in this category contribute. Resets every 7 days.
+            </p>
+        </div>
+        <span class="level-badge" style="background: var(--primary); color: white; border-radius: var(--radius-sm);">
+            {% if quest.is_completed %}🏆 Completed! +100 pts{% else %}⚡ Active{% endif %}
+        </span>
+    </div>
+
+    <div class="group-challenge-progress" style="margin: 12px 0 8px 0;">
+        <div class="group-progress-bar-bg" style="background: #e5ecd8;">
+            <div class="group-progress-bar-fill" style="width: {{ quest_percent }}%; background: linear-gradient(90deg, var(--primary), var(--emerald));"></div>
+        </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--accent);">
+        <span>Progress: {{ quest_count }} / {{ quest.target_count }} actions</span>
+        <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; font-family: inherit;">Started: {{ quest.start_date|date:"d M Y" }}</span>
+    </div>
+</div>
+{% endif %}
+
+<!-- Group Leaderboard and Management Layout -->
 <div class="group-detail-layout">
+    <!-- Group Leaderboard -->
     <div class="card">
         <div class="card-header">
             <div>
                 <p class="card-label">Group Leaderboard</p>
                 <h2>{{ group.name }}</h2>
             </div>
-
             {% if group.owner == user %}
                 <span class="owner-badge">Owner</span>
             {% endif %}
@@ -39,51 +110,64 @@
                         #{{ forloop.counter }}
                     </div>
 
-                    <div class="friend-avatar">
-                        {{ member.username|first|upper }}
-                    </div>
+                    {% if member.profile.avatar %}
+                        <img src="{{ member.profile.avatar.url }}" alt="{{ member.username }}" class="friend-avatar" style="object-fit: cover;">
+                    {% else %}
+                        <div class="friend-avatar">
+                            {{ member.username|first|upper }}
+                        </div>
+                    {% endif %}
 
                     <div class="leaderboard-info">
-                        <h4>{{ member.username }}</h4>
-
+                        <h4 style="display: flex; align-items: center; gap: 8px;">
+                            {{ member.username }}
+                            {% if member == user %}
+                                <span class="ranking-level-badge" style="margin: 0; font-size: 10px;">You</span>
+                            {% endif %}
+                        </h4>
                         {% if member == group.owner %}
-                            <p>Group Owner</p>
+                            <p style="color: var(--primary); font-weight: 600;">Group Owner</p>
                         {% else %}
                             <p>Group Member</p>
                         {% endif %}
                     </div>
 
-                    <strong>{{ member.total_points }} pts</strong>
+                    <strong style="font-size: 16px; color: var(--primary); font-weight: 800;">{{ member.total_points }} pts</strong>
 
                     {% if group.owner == user and member != group.owner %}
-                        <form method="post" action="{% url 'remove_group_member' group.id member.id %}">
+                        <form method="post" action="{% url 'remove_group_member' group.id member.id %}" style="margin-left: 12px;">
                             {% csrf_token %}
-                            <button type="submit" class="danger-btn">Remove</button>
+                            <button type="submit" class="danger-btn" style="padding: 6px 12px; font-size: 12px;">Remove</button>
                         </form>
                     {% endif %}
                 </div>
             {% empty %}
-                <p class="empty-text">No members yet.</p>
+                <p class="muted-text" style="text-align: center; padding: 20px;">No members yet.</p>
             {% endfor %}
         </div>
     </div>
 
+    <!-- Management Panel -->
     <div class="card">
         <p class="card-label">Manage Group</p>
-        <h2>Actions</h2>
+        <h2 style="font-size: 22px; font-weight: 800; color: var(--accent); margin-bottom: 20px;">Actions</h2>
 
         {% if group.owner == user %}
-            <form method="post" action="{% url 'send_group_invite' group.id %}" class="eco-form">
+            <!-- Invite Form -->
+            <form method="post" action="{% url 'send_group_invite' group.id %}" class="eco-form" style="margin-bottom: 24px;">
                 {% csrf_token %}
-
-                <label>Invite Member</label>
-                <input type="text" name="username" placeholder="Enter username..." required>
-
-                <button type="submit" class="upload-btn full-btn">Send Invite</button>
+                <div class="form-group">
+                    <label style="font-size: 13px; font-weight: 700; color: var(--accent);">Invite Member</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" name="username" placeholder="Enter username..." required style="flex: 1; padding: 10px 14px; font-size: 14px; border: 1.5px solid var(--border); border-radius: var(--radius-md);">
+                        <button type="submit" class="upload-btn" style="padding: 10px 16px; font-size: 13px;">Invite</button>
+                    </div>
+                </div>
             </form>
 
+            <!-- Pending Invitations -->
             <div class="pending-invites-box">
-                <p class="card-label">Pending Invites</p>
+                <p class="card-label" style="font-size: 11px; margin-bottom: 8px;">Pending Invites</p>
 
                 {% for invite in pending_invites %}
                     <div class="group-info">
@@ -91,22 +175,24 @@
                         <strong>Pending</strong>
                     </div>
                 {% empty %}
-                    <p class="empty-text">No pending invites.</p>
+                    <p style="font-size: 13px; color: var(--text-muted); font-style: italic;">No pending invites.</p>
                 {% endfor %}
             </div>
 
+            <!-- Delete Group -->
             <form method="post" action="{% url 'delete_group' group.id %}" class="danger-form">
                 {% csrf_token %}
-                <button type="submit" class="danger-btn full-btn">Delete Group</button>
+                <button type="submit" class="danger-btn full-btn" style="padding: 12px; font-size: 14px; width: 100%; justify-content: center;">Delete Group</button>
             </form>
         {% else %}
-            <p class="muted-text">
-                You are a member of this group.
+            <p class="muted-text" style="font-size: 14px; margin-bottom: 20px;">
+                You are a member of this group. Compete with your team members to reach the 2000 points challenge target!
             </p>
 
+            <!-- Leave Group -->
             <form method="post" action="{% url 'leave_group' group.id %}" class="danger-form">
                 {% csrf_token %}
-                <button type="submit" class="danger-btn full-btn">Leave Group</button>
+                <button type="submit" class="danger-btn full-btn" style="padding: 12px; font-size: 14px; width: 100%; justify-content: center;">Leave Group</button>
             </form>
         {% endif %}
     </div>

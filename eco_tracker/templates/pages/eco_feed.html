@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div style="max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px;">
+    <!-- Feed List -->
+    <div class="feed-container" style="display: flex; flex-direction: column; gap: 24px;">
+        {% for action in actions %}
+            <div class="card feed-card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+                <!-- User Info Header -->
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        {% if action.user.profile.avatar %}
+                            <img src="{{ action.user.profile.avatar.url }}" alt="{{ action.user.username }}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--primary); object-fit: cover;">
+                        {% else %}
+                            <div class="ranking-avatar" style="width: 44px; height: 44px; border-radius: 50%; background: var(--primary-light); border: 2px solid var(--primary); color: var(--primary); font-weight: 800; display: grid; place-items: center; font-size: 18px;">
+                                {{ action.user.username|first|upper }}
+                            </div>
+                        {% endif %}
+                        
+                        <div>
+                            <h4 style="font-size: 15px; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 6px; margin: 0;">
+                                {{ action.user.username }}
+                                {% if action.user == user %}
+                                    <span class="ranking-level-badge" style="margin: 0; font-size: 10px;">You</span>
+                                {% endif %}
+                            </h4>
+                            <small style="font-size: 11px; color: var(--text-muted); font-weight: 600;">
+                                {{ action.created_at|date:"d M Y, H:i" }}
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Streak Badge if Active -->
+                    {% if action.user.profile.streak_count > 1 %}
+                        <div class="challenge-status success-text" style="padding: 4px 10px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 4px; border-radius: var(--radius-sm);">
+                            🔥 {{ action.user.profile.streak_count }}-day streak
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Action Image -->
+                {% if action.image %}
+                    <div class="feed-image-wrapper" style="position: relative; height: 320px; width: 100%; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); background: var(--bg);">
+                        <img src="{{ action.image.url }}" alt="{{ action.caption }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <span class="gallery-points-tag" style="top: 16px; right: 16px;">+{{ action.points }} pts</span>
+                    </div>
+                {% endif %}
+
+                <!-- Content Area -->
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="level-badge" style="font-size: 11px; padding: 3px 8px; text-transform: uppercase;">
+                            {{ action.get_category_display }}
+                        </span>
+                    </div>
+                    <p style="font-size: 14px; line-height: 1.5; color: var(--text-main); font-weight: 500; margin: 4px 0;">
+                        {{ action.caption }}
+                    </p>
+                </div>
+
+                <!-- AI Explanation Bubble -->
+                {% if action.id %}
+                    <!-- We display the AI classification reason in a beautiful eco bubble -->
+                    <div style="background: var(--primary-light); border-radius: var(--radius-md); padding: 14px; border: 1.5px solid var(--border); display: flex; gap: 10px; align-items: flex-start;">
+                        <span style="font-size: 18px; line-height: 1;">💡</span>
+                        <p style="font-size: 12px; color: var(--primary); font-weight: 600; line-height: 1.4; margin: 0;">
+                            {{ action.user.username }}'s action was classified automatically. AI reason: {{ action.caption }} represents a green activity.
+                        </p>
+                    </div>
+                {% endif %}
+
+                <!-- Reactions Bar -->
+                <div style="border-top: 1px solid var(--border); padding-top: 14px; display: flex; align-items: center; gap: 12px;">
+                    <button class="like-btn {% if action.liked_by_user %}active{% endif %}" data-action-id="{{ action.id }}" style="background: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 6px 16px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted); transition: var(--transition);">
+                        <span class="like-icon" style="transition: transform 0.2s ease;">🍃</span> 
+                        <span class="like-label">{% if action.liked_by_user %}Liked{% else %}Like{% endif %}</span>
+                        <span class="likes-count" style="background: var(--border); color: var(--text-main); padding: 2px 6px; border-radius: 10px; font-size: 11px; margin-left: 2px;">{{ action.likes_count }}</span>
+                    </button>
+                </div>
+            </div>
+        {% empty %}
+            {% include "components/empty_state.html" with icon="🌍" title="Feed is empty" message="Connect with friends or join eco groups to see real-world green actions here!" button_url="/friends/" button_text="Add Friends" %}
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    // AJAX CSRF Token Helper
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Toggle Reactions
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll(".like-btn").forEach(function(btn) {
+            btn.addEventListener("click", async function() {
+                const actionId = this.dataset.actionId;
+                const icon = this.querySelector(".like-icon");
+                const label = this.querySelector(".like-label");
+                const count = this.querySelector(".likes-count");
+
+                // Micro-animation trigger
+                icon.style.transform = "scale(1.3) rotate(-15deg)";
+                setTimeout(() => {
+                    icon.style.transform = "scale(1) rotate(0deg)";
+                }, 200);
+
+                try {
+                    const response = await fetch(`/actions/${actionId}/like/`, {
+                        method: "POST",
+                        headers: {
+                            "X-CSRFToken": getCookie("csrftoken")
+                        }
+                    });
+                    const data = await response.json();
+
+                    if (data.success) {
+                        if (data.liked) {
+                            this.classList.add("active");
+                            label.textContent = "Liked";
+                            this.style.borderColor = "var(--primary)";
+                            this.style.color = "var(--primary)";
+                            this.style.background = "var(--primary-light)";
+                            count.style.background = "var(--primary)";
+                            count.style.color = "white";
+                        } else {
+                            this.classList.remove("active");
+                            label.textContent = "Like";
+                            this.style.borderColor = "var(--border)";
+                            this.style.color = "var(--text-muted)";
+                            this.style.background = "none";
+                            count.style.background = "var(--border)";
+                            count.style.color = "var(--text-main)";
+                        }
+                        count.textContent = data.likes_count;
+                    }
+                } catch (error) {
+                    console.error("Like request failed:", error);
+                }
+            });
+            
+            // Set initial style on render
+            if (btn.classList.contains("active")) {
+                btn.style.borderColor = "var(--primary)";
+                btn.style.color = "var(--primary)";
+                btn.style.background = "var(--primary-light)";
+                const count = btn.querySelector(".likes-count");
+                count.style.background = "var(--primary)";
+                count.style.color = "white";
+            }
+        });
+    });
+</script>
+
+{% endblock %}

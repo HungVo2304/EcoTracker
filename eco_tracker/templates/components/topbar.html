@@ -6,6 +6,23 @@
 
     <div class="topbar-actions">
         <input type="text" placeholder="Search action...">
-        <button class="upload-btn">+ Upload Action</button>
+        <button id="themeToggleBtn"
+            style="padding: 0; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-size: 18px; border: 1.5px solid var(--border); background: var(--panel); cursor: pointer; color: var(--accent); transition: var(--transition);">
+            🌙
+        </button>
+
+        {% if request.user.is_authenticated %}
+        <a href="{% url 'profile' %}" class="topbar-avatar-link">
+            {% if request.user.profile.avatar %}
+            <img src="{{ request.user.profile.avatar.url }}" alt="{{ request.user.username }}" class="ranking-avatar"
+                style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--primary); object-fit: cover;">
+            {% else %}
+            <div class="ranking-avatar"
+                style="width: 44px; height: 44px; border-radius: 50%; background: var(--primary-light); border: 2px solid var(--primary); color: var(--primary); font-weight: 800; display: grid; place-items: center; font-size: 18px;">
+                {{ request.user.username|first|upper }}
+            </div>
+            {% endif %}
+        </a>
+        {% endif %}
     </div>
 </header>

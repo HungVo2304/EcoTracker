@@ -84,7 +84,14 @@ def get_level_info(total_points):
 from django.utils import timezone
 from django.db.models import Sum
 
-from .models import DailyMission, UserDailyMission
+from .models import DailyMission, UserDailyMission, EcoAction
+
+
+def get_user_total_points(user):
+    action_points = EcoAction.objects.filter(user=user).aggregate(total=Sum("points"))["total"] or 0
+    bonus_points = UserDailyMission.objects.filter(user=user, is_completed=True).aggregate(total=Sum("mission__bonus_points"))["total"] or 0
+    return action_points + bonus_points
+
 
 
 DEFAULT_DAILY_MISSIONS = [
@@ -215,3 +222,168 @@ def get_today_mission_summary(user):
         "completed": completed,
         "bonus_points": bonus_points,
     }
+
+
+from django.db.models import Count
+from .models import Badge, UserBadge, EcoActionLike, GroupWeeklyQuest
+import random
+
+DEFAULT_BADGES = [
+    {
+        "code": "recycling_master",
+        "name": "Recycling Master",
+        "description": "Upload 5 recycling actions to earn this badge.",
+        "icon": "♻️",
+        "requirement_category": "recycling",
+        "requirement_count": 5
+    },
+    {
+        "code": "green_commuter",
+        "name": "Green Commuter",
+        "description": "Upload 5 green transport actions to earn this badge.",
+        "icon": "🚲",
+        "requirement_category": "green_transport",
+        "requirement_count": 5
+    },
+    {
+        "code": "tree_ambassador",
+        "name": "Tree Ambassador",
+        "description": "Upload 3 tree planting actions to earn this badge.",
+        "icon": "🌳",
+        "requirement_category": "tree_planting",
+        "requirement_count": 3
+    },
+    {
+        "code": "area_hero",
+        "name": "Area Hero",
+        "description": "Upload 5 clean up actions to earn this badge.",
+        "icon": "🧹",
+        "requirement_category": "clean_up",
+        "requirement_count": 5
+    },
+    {
+        "code": "energy_saver",
+        "name": "Energy Saver",
+        "description": "Upload 5 saving energy actions to earn this badge.",
+        "icon": "💡",
+        "requirement_category": "saving_energy",
+        "requirement_count": 5
+    },
+    {
+        "code": "eco_consumer",
+        "name": "Eco Consumer",
+        "description": "Upload 5 reusable item actions to earn this badge.",
+        "icon": "🛍️",
+        "requirement_category": "reusable_item",
+        "requirement_count": 5
+    }
+]
+
+
+def create_default_badges():
+    for badge_data in DEFAULT_BADGES:
+        Badge.objects.get_or_create(
+            code=badge_data["code"],
+            defaults={
+                "name": badge_data["name"],
+                "description": badge_data["description"],
+                "icon": badge_data["icon"],
+                "requirement_category": badge_data["requirement_category"],
+                "requirement_count": badge_data["requirement_count"]
+            }
+        )
+
+
+def update_user_streak(user):
+    """
+    Updates the user's eco streak based on their action upload dates.
+    Returns (streak_count, points_multiplier).
+    - Streak 3-6 days: 1.1x multiplier
+    - Streak 7+ days: 1.3x multiplier
+    """
+    profile, created = UserProfile.objects.get_or_create(user=user)
+    today = timezone.localdate()
+    
+    if profile.last_action_date is None:
+        profile.streak_count = 1
+    else:
+        delta = today - profile.last_action_date
+        if delta.days == 1:
+            profile.streak_count += 1
+        elif delta.days > 1:
+            profile.streak_count = 1
+        # If delta.days == 0, keep current streak count
+        
+    profile.last_action_date = today
+    profile.save()
+    
+    if profile.streak_count >= 7:
+        multiplier = 1.3
+    elif profile.streak_count >= 3:
+        multiplier = 1.1
+    else:
+        multiplier = 1.0
+        
+    return profile.streak_count, multiplier
+
+
+def check_and_award_badges(user):
+    """
+    Evaluates the user's action counts and awards newly earned badges.
+    Returns a list of newly unlocked Badge objects.
+    """
+    create_default_badges()
+    newly_earned = []
+    
+    earned_badge_ids = UserBadge.objects.filter(user=user).values_list("badge_id", flat=True)
+    unearned_badges = Badge.objects.exclude(id__in=earned_badge_ids)
+    
+    for badge in unearned_badges:
+        count = EcoAction.objects.filter(user=user, category=badge.requirement_category).count()
+        if count >= badge.requirement_count:
+            UserBadge.objects.create(user=user, badge=badge)
+            newly_earned.append(badge)
+            
+    return newly_earned
+
+
+def get_or_create_weekly_quest(group):
+    """
+    Fetches the active weekly quest for the group. 
+    If none exists or it is older than 7 days, generates a new one.
+    Returns (quest, progress_count, progress_percent).
+    """
+    today = timezone.localdate()
+    quest = GroupWeeklyQuest.objects.filter(group=group).first()
+    
+    if quest:
+        delta = today - quest.start_date
+        if delta.days >= 7:
+            quest.delete()
+            quest = None
+            
+    if not quest:
+        categories = [cat[0] for cat in EcoAction.CATEGORY_CHOICES]
+        selected_cat = random.choice(categories)
+        quest = GroupWeeklyQuest.objects.create(
+            group=group,
+            category=selected_cat,
+            target_count=10,
+            start_date=today,
+            is_completed=False
+        )
+        
+    members = group.members.all()
+    progress_count = EcoAction.objects.filter(
+        user__in=members,
+        category=quest.category,
+        created_at__date__gte=quest.start_date
+    ).count()
+    
+    if progress_count >= quest.target_count and not quest.is_completed:
+        quest.is_completed = True
+        quest.save()
+        
+    progress_percent = min(100, int((progress_count / quest.target_count) * 100))
+    
+    return quest, progress_count, progress_percent

@@ -11,26 +11,19 @@
         <span class="level-badge">{{ progress_percent|default:0 }}%</span>
     </div>
 
-    <div class="progress-bar">
-        <div class="progress-fill" data-progress="{{ progress_percent|default:0 }}"></div>
+    <div class="progress-bar-container">
+        <div class="progress-bar-fill" style="width: {{ progress_percent|default:0 }}%;"></div>
     </div>
 
-    <div class="level-meta">
-        <p>{{ level_info.description|default:"Start uploading eco actions to grow your impact." }}</p>
+    <div class="level-meta" style="margin-top: 14px; display: flex; flex-direction: column; gap: 4px;">
+        <p style="font-size: 13px; color: var(--text-muted); font-weight: 500;">{{ level_info.description|default:"Start uploading eco actions to grow your impact." }}</p>
 
         {% if level_info.next_level %}
-            <small>
+            <small style="font-size: 11px; font-weight: 700; color: var(--primary);">
                 {{ level_info.points_to_next }} pts left to reach {{ level_info.next_level }}
             </small>
         {% else %}
-            <small>You have reached the highest level.</small>
+            <small style="font-size: 11px; font-weight: 700; color: var(--emerald);">You have reached the highest level.</small>
         {% endif %}
     </div>
 </div>
-
-<script>
-    document.querySelectorAll(".progress-fill").forEach(function (bar) {
-        const progress = bar.dataset.progress || 0;
-        bar.style.width = progress + "%";
-    });
-</script>

@@ -2,31 +2,44 @@
 
 {% block content %}
 
-<div class="groups-layout">
+<div class="groups-layout" style="margin-bottom: 32px;">
+    <!-- Create Group Card -->
     <div class="card form-card">
-        <h2>Create New Group</h2>
-        <p class="muted-text">
+        <p class="card-label">Collaborate</p>
+        <h2 style="font-size: 22px; font-weight: 800; color: var(--accent); margin-bottom: 8px;">Create New Group</h2>
+        <p class="muted-text" style="margin-bottom: 20px; font-size: 13px;">
             Create a group challenge. Each group can have 2 to 5 members.
         </p>
 
         <form method="post" class="eco-form">
             {% csrf_token %}
-            {{ form.as_p }}
+            
+            {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                        <small style="color: var(--danger-text); font-weight: 600;">{{ field.errors.0 }}</small>
+                    {% endif %}
+                </div>
+            {% endfor %}
 
-            <button type="submit" class="upload-btn">Create Group</button>
+            <button type="submit" class="upload-btn" style="width: 100%; justify-content: center; margin-top: 8px;">Create Group</button>
         </form>
     </div>
 
-    <div class="card">
-        <p class="card-label">Group Rule</p>
-        <h2>Invite System</h2>
-        <p class="muted-text">
-            Users must accept a group invite before joining.
+    <!-- Info Box Card -->
+    <div class="card stat-card" style="justify-content: center; background: linear-gradient(135deg, var(--primary-light), var(--accent-light));">
+        <p class="card-label">Group Rules</p>
+        <h2 style="font-size: 24px; font-weight: 800; color: var(--accent); margin-bottom: 8px;">Challenge System</h2>
+        <p class="muted-text" style="font-size: 13px; line-height: 1.5; color: var(--text-muted);">
+            Eco groups allow you to team up with up to 5 friends. Once your group has 2 or more members, your collective group points will count towards the 2000 points Team Target Challenge!
         </p>
     </div>
 </div>
 
-<div class="card">
+<!-- Pending Invites Section -->
+<div class="card" style="margin-bottom: 32px;">
     <div class="card-header">
         <div>
             <p class="card-label">Group Invites</p>
@@ -38,17 +51,16 @@
         {% for invite in received_invites %}
             <div class="action-item">
                 <div class="action-content">
-                    <h4>{{ invite.group.name }}</h4>
-                    <p>Invited by {{ invite.sender.username }}</p>
+                    <h4 style="font-size: 15px; font-weight: 700; color: var(--accent);">{{ invite.group.name }}</h4>
+                    <p style="font-size: 13px; color: var(--text-muted);">Invited by <strong style="color: var(--primary);">{{ invite.sender.username }}</strong></p>
                 </div>
 
                 <div class="friend-actions">
                     <a href="{% url 'accept_group_invite' invite.id %}">
-                        <button class="small-btn">Accept</button>
+                        <button class="small-btn" style="padding: 8px 16px;">Accept</button>
                     </a>
-
                     <a href="{% url 'reject_group_invite' invite.id %}">
-                        <button class="danger-btn">Reject</button>
+                        <button class="danger-btn" style="padding: 8px 16px;">Reject</button>
                     </a>
                 </div>
             </div>
@@ -58,6 +70,7 @@
     </div>
 </div>
 
+<!-- Your Group Challenges -->
 <div class="card">
     <div class="card-header">
         <div>
@@ -72,7 +85,7 @@
                 <div class="group-card-header">
                     <div>
                         <h3>{{ group.name }}</h3>
-                        <p>{{ group.member_count }} / 5 members</p>
+                        <p style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">{{ group.member_count }} / 5 members</p>
                     </div>
 
                     {% if group.owner == user %}
@@ -83,21 +96,23 @@
                 </div>
 
                 {% if group.member_count < 2 %}
-                    <p class="challenge-status warning-text">
-                        Waiting for more members.
-                    </p>
+                    <div class="challenge-status warning-text" style="display: flex; align-items: center; gap: 6px;">
+                        <span>⏳</span> Waiting for more members
+                    </div>
                 {% else %}
-                    <p class="challenge-status success-text">
-                        Challenge active.
-                    </p>
+                    <div class="challenge-status success-text" style="display: flex; align-items: center; gap: 6px;">
+                        <span>🔥</span> Challenge active
+                    </div>
                 {% endif %}
 
-                <a href="{% url 'group_detail' group.id %}">
-                    <button class="secondary-btn full-btn">Open Group</button>
+                <a href="{% url 'group_detail' group.id %}" style="margin-top: 8px; width: 100%;">
+                    <button class="secondary-btn full-btn" style="width: 100%; padding: 12px;">Open Group</button>
                 </a>
             </div>
         {% empty %}
-            {% include "components/empty_state.html" with icon="🏆" title="No groups yet" message="Create a group challenge or accept an invite to compete with friends." %}
+            <div style="grid-column: 1 / -1; width: 100%;">
+                {% include "components/empty_state.html" with icon="🏆" title="No groups yet" message="Create a group challenge or accept an invite to compete with friends." %}
+            </div>
         {% endfor %}
     </div>
 </div>

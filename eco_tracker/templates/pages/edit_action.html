@@ -3,13 +3,15 @@
 {% block content %}
 
 <div class="upload-layout">
+    <!-- Edit Form Card -->
     <div class="card form-card">
-        <h2>Edit Eco Action</h2>
-        <p class="muted-text">
-            Update your photo, caption, or category. Points will update automatically.
+        <p class="card-label">Modify</p>
+        <h2 style="font-size: 22px; font-weight: 800; color: var(--accent); margin-bottom: 8px;">Edit Eco Action</h2>
+        <p class="muted-text" style="margin-bottom: 24px; font-size: 13px; line-height: 1.5;">
+            Update your photo or description. Google Gemini AI will automatically re-analyze your image, categorize it, and recalculate your points!
         </p>
 
-        <form method="post" enctype="multipart/form-data" class="eco-form upload-form">
+        <form method="post" enctype="multipart/form-data" class="eco-form upload-form" id="editForm">
             {% csrf_token %}
 
             {% if form.non_field_errors %}
@@ -18,18 +20,19 @@
                 </div>
             {% endif %}
 
-            <div class="current-image-box">
-                <p class="card-label">Current Image</p>
-
+            <!-- Current Image Preview -->
+            <div class="current-image-box" style="margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 16px;">
+                <p class="card-label" style="font-size: 11px; margin-bottom: 8px;">Current Image</p>
                 {% if eco_action.image %}
-                    <img src="{{ eco_action.image.url }}" alt="{{ eco_action.caption }}">
+                    <img src="{{ eco_action.image.url }}" alt="{{ eco_action.caption }}" style="width: 100%; height: 180px; object-fit: cover; border-radius: var(--radius-md); border: 1.5px solid var(--border);">
                 {% else %}
-                    <div class="gallery-placeholder">🌱</div>
+                    <div style="height: 180px; width: 100%; display: grid; place-items: center; font-size: 40px; background: var(--primary-light); border-radius: var(--radius-md);">🌱</div>
                 {% endif %}
             </div>
 
+            <!-- Replace Image File Picker -->
             <div class="form-group">
-                <label for="{{ form.image.id_for_label }}">Replace Image</label>
+                <label for="{{ form.image.id_for_label }}">Replace Image (Optional)</label>
                 {{ form.image }}
 
                 {% if form.image.errors %}
@@ -39,12 +42,14 @@
                 {% endif %}
             </div>
 
-            <div class="image-preview-box">
+            <!-- New Image Preview Box -->
+            <div class="image-preview-box" style="margin-top: 10px;">
                 <img id="imagePreview" src="" alt="Image preview">
                 <p id="previewText">New image preview will appear here</p>
             </div>
 
-            <div class="form-group">
+            <!-- Caption Field -->
+            <div class="form-group" style="margin-top: 12px;">
                 <label for="{{ form.caption.id_for_label }}">Caption</label>
                 {{ form.caption }}
 
@@ -55,34 +60,26 @@
                 {% endif %}
             </div>
 
-            <div class="form-group">
-                <label for="{{ form.category.id_for_label }}">Category</label>
-                {{ form.category }}
-
-                {% if form.category.errors %}
-                    <div class="field-error">
-                        {{ form.category.errors }}
-                    </div>
-                {% endif %}
+            <!-- Points Display Card -->
+            <div class="points-preview" style="background: linear-gradient(135deg, var(--primary-light), var(--accent-light)); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <p style="font-size: 14px; font-weight: 700; color: var(--text-muted); margin: 0;">Current Points</p>
+                <h2 id="pointsPreview" style="font-size: 24px; font-weight: 800; color: var(--accent); margin: 0; font-family: 'Outfit', sans-serif;">{{ eco_action.points }} pts</h2>
             </div>
 
-            <div class="points-preview">
-                <p>Estimated Points</p>
-                <h2 id="pointsPreview">{{ eco_action.points }} pts</h2>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="upload-btn">Save Changes</button>
-
-                <a href="{% url 'my_progress' %}">
-                    <button type="button" class="secondary-btn">Cancel</button>
+            <div class="form-actions" style="display: flex; gap: 12px; margin-top: 16px;">
+                <button type="submit" class="upload-btn" id="submitBtn" style="flex: 1; justify-content: center; padding: 14px;">Save Changes</button>
+                <a href="{% url 'my_progress' %}" style="flex: 1;">
+                    <button type="button" class="secondary-btn" style="width: 100%; justify-content: center; padding: 14px;">Cancel</button>
                 </a>
             </div>
         </form>
     </div>
 
+    <!-- Point System Guide Card -->
     <div class="card upload-guide">
-        <h2>Point System</h2>
+        <p class="card-label">Reference</p>
+        <h2 style="font-size: 22px; font-weight: 800; color: var(--accent); margin-bottom: 8px;">Point System</h2>
+        <p class="muted-text" style="margin-bottom: 20px; font-size: 13px;">AI will categorize your action into one of these groups:</p>
 
         <div class="guide-item">
             <span>♻️ Recycling</span>
@@ -120,7 +117,10 @@
     const imageInput = document.getElementById("id_image");
     const imagePreview = document.getElementById("imagePreview");
     const previewText = document.getElementById("previewText");
+    const editForm = document.getElementById("editForm");
+    const submitBtn = document.getElementById("submitBtn");
 
+    // Display selected new image preview
     if (imageInput) {
         imageInput.addEventListener("change", function () {
             const file = this.files[0];
@@ -139,23 +139,13 @@
         });
     }
 
-    const categoryInput = document.getElementById("id_category");
-    const pointsPreview = document.getElementById("pointsPreview");
-
-    const pointsMap = {
-        "recycling": 20,
-        "tree_planting": 50,
-        "green_transport": 30,
-        "clean_up": 40,
-        "saving_energy": 15,
-        "reusable_item": 25
-    };
-
-    if (categoryInput) {
-        categoryInput.addEventListener("change", function () {
-            const selectedCategory = this.value;
-            const points = pointsMap[selectedCategory] || 0;
-            pointsPreview.textContent = points + " pts";
+    // Trigger AI Loading State on Form Submit
+    if (editForm && submitBtn) {
+        editForm.addEventListener("submit", function() {
+            submitBtn.disabled = true;
+            submitBtn.textContent = "AI is re-analyzing...";
+            submitBtn.style.background = "var(--primary-glow)";
+            submitBtn.style.color = "var(--primary)";
         });
     }
 </script>

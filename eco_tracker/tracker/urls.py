@@ -6,6 +6,8 @@ urlpatterns = [
     path("", views.dashboard, name="dashboard"),
     path("upload/", views.upload_action, name="upload_action"),
     path("ai/classify-action/", views.ai_classify_action, name="ai_classify_action"),
+    path("feed/", views.eco_feed, name="eco_feed"),
+    path("actions/<int:action_id>/like/", views.like_action, name="like_action"),
     path("progress/", views.my_progress, name="my_progress"),
     
     path("friends/", views.friends, name="friends"),

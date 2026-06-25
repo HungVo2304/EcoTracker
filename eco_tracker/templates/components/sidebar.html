@@ -12,8 +12,8 @@
             Dashboard
         </a>
 
-        <a class="{% if request.resolver_match.url_name == 'upload_action' %}active{% endif %}" href="{% url 'upload_action' %}">
-            Upload Action
+        <a class="{% if request.resolver_match.url_name == 'eco_feed' %}active{% endif %}" href="{% url 'eco_feed' %}">
+            Eco Feed
         </a>
 
         <a class="{% if request.resolver_match.url_name == 'my_progress' %}active{% endif %}" href="{% url 'my_progress' %}">
@@ -36,6 +36,15 @@
             Profile
         </a>
     </nav>
+
+    <!-- Prominent CTA Upload Button -->
+    <div style="margin-top: 18px; margin-bottom: 8px;">
+        <a href="{% url 'upload_action' %}" style="display: block; width: 100%;">
+            <button class="upload-btn" style="width: 100%; padding: 13px 18px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 800; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); cursor: pointer; border: none; font-family: inherit;">
+                <span>🌱</span> Share Action
+            </button>
+        </a>
+    </div>
 
     <div class="sidebar-bottom">
         {% if user.is_authenticated %}

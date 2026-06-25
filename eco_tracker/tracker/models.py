@@ -118,10 +118,79 @@ class UserProfile(models.Model):
         blank=True,
         null=True
     )
+    streak_count = models.PositiveIntegerField(default=0)
+    last_action_date = models.DateField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.username}'s Profile"
     
+
+class Badge(models.Model):
+    code = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+    icon = models.CharField(max_length=10) # Emoji
+    requirement_category = models.CharField(max_length=50, choices=EcoAction.CATEGORY_CHOICES)
+    requirement_count = models.PositiveIntegerField()
+
+    def __str__(self):
+        return f"{self.icon} {self.name}"
+
+
+class UserBadge(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="badges"
+    )
+    badge = models.ForeignKey(
+        Badge,
+        on_delete=models.CASCADE,
+        related_name="earned_by"
+    )
+    earned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "badge")
+
+    def __str__(self):
+        return f"{self.user.username} earned {self.badge.name}"
+
+
+class EcoActionLike(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="likes"
+    )
+    action = models.ForeignKey(
+        EcoAction,
+        on_delete=models.CASCADE,
+        related_name="likes"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "action")
+
+    def __str__(self):
+        return f"{self.user.username} liked action {self.action.id}"
+
+
+class GroupWeeklyQuest(models.Model):
+    group = models.OneToOneField(
+        EcoGroup,
+        on_delete=models.CASCADE,
+        related_name="weekly_quest"
+    )
+    category = models.CharField(max_length=50, choices=EcoAction.CATEGORY_CHOICES)
+    target_count = models.PositiveIntegerField(default=10)
+    start_date = models.DateField()
+    is_completed = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Quest for {self.group.name}: {self.category} ({self.target_count})"
+
 
 class GroupInvite(models.Model):
     STATUS_CHOICES = [
