@@ -225,7 +225,7 @@ def get_today_mission_summary(user):
 
 
 from django.db.models import Count
-from .models import Badge, UserBadge, EcoActionLike, GroupWeeklyQuest
+from .models import UserProfile, Badge, UserBadge, EcoActionLike, GroupWeeklyQuest
 import random
 
 DEFAULT_BADGES = [
