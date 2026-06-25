@@ -8,6 +8,8 @@ from django.contrib import messages
 from django.db.models import Sum, Count, Q, Value, IntegerField
 from django.db.models.functions import Coalesce
 from django.utils import timezone
+from django.http import JsonResponse
+from .ai_utils import classify_eco_image
 
 from .models import (
     EcoAction,
@@ -890,3 +892,36 @@ def update_avatar(request):
             messages.error(request, "Could not update avatar. Please check the file.")
 
     return redirect("profile")
+
+@login_required
+def ai_classify_action(request):
+    if request.method != "POST":
+        return JsonResponse(
+            {"success": False, "error": "Invalid request method."},
+            status=405
+        )
+
+    image = request.FILES.get("image")
+
+    if not image:
+        return JsonResponse(
+            {"success": False, "error": "No image uploaded."},
+            status=400
+        )
+
+    try:
+        result = classify_eco_image(image)
+
+        return JsonResponse({
+            "success": True,
+            "category": result["category"],
+            "confidence": result["confidence"],
+            "reason": result["reason"],
+            "is_eco_action": result["is_eco_action"],
+        })
+
+    except Exception as error:
+        return JsonResponse({
+            "success": False,
+            "error": str(error),
+        }, status=500)
