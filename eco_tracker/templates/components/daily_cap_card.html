@@ -1,0 +1,25 @@
+<div class="card daily-cap-card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <div>
+            <p class="card-label">Daily Points Limit</p>
+            <h2>{{ daily_points_earned }}/{{ daily_points_cap }} pts</h2>
+        </div>
+        <span class="level-badge" style="background: var(--emerald-light); color: var(--emerald); font-weight: 800; border: 1px solid rgba(16, 185, 129, 0.2);">
+            Daily Cap
+        </span>
+    </div>
+
+    <div class="progress-bar-container" style="margin-top: 14px;">
+        <div class="progress-bar-fill" style="width: {{ daily_points_percent }}%; background: linear-gradient(90deg, var(--emerald), var(--primary));"></div>
+    </div>
+
+    <div class="level-meta" style="margin-top: 12px;">
+        <p style="font-size: 12.5px; color: var(--text-muted); font-weight: 500; line-height: 1.4;">
+            {% if daily_points_earned >= daily_points_cap %}
+                🎉 You have reached your daily points limit! Keep up the green habits tomorrow.
+            {% else %}
+                You can earn up to <strong>{{ daily_points_remaining }}</strong> more points today by completing quests.
+            {% endif %}
+        </p>
+    </div>
+</div>

@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="dashboard-grid clean-dashboard-grid" style="grid-template-columns: 1fr 2fr; gap: 24px; align-items: start;">
+    <!-- Left Column: Daily Cap & Group Quest -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- Daily Cap Card -->
+        <div class="card daily-cap-card">
+            <div class="card-header">
+                <div>
+                    <p class="card-label">Daily Points Limit</p>
+                    <h2>{{ daily_points_earned }}/{{ daily_points_cap }} pts</h2>
+                </div>
+                <span class="level-badge" style="background: var(--emerald-light); color: var(--emerald); font-weight: 800; border: 1px solid rgba(16, 185, 129, 0.2);">
+                    Daily Cap
+                </span>
+            </div>
+
+            <div class="progress-bar-container" style="margin-top: 14px;">
+                <div class="progress-bar-fill" style="width: {{ daily_points_percent }}%; background: linear-gradient(90deg, var(--emerald), var(--primary));"></div>
+            </div>
+
+            <div class="level-meta" style="margin-top: 12px;">
+                <p style="font-size: 12.5px; color: var(--text-muted); font-weight: 500; line-height: 1.4;">
+                    {% if daily_points_earned >= daily_points_cap %}
+                        🎉 You have reached your daily points limit! Keep up the green habits tomorrow.
+                    {% else %}
+                        You can earn up to <strong>{{ daily_points_remaining }}</strong> more points today by completing quests.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Group Quest Card -->
+        <div class="card group-quest-card">
+            <div class="card-header">
+                <div>
+                    <p class="card-label">Group Weekly Quest</p>
+                    {% if active_group %}
+                        <h2 style="text-transform: capitalize;">{{ group_quest.get_category_display }}</h2>
+                    {% else %}
+                        <h2>Not in a Group</h2>
+                    {% endif %}
+                </div>
+                <span class="level-badge" style="background: var(--accent-light); color: var(--accent); font-weight: 800; border: 1px solid rgba(245, 158, 11, 0.2);">
+                    Team Quest
+                </span>
+            </div>
+
+            {% if active_group %}
+                <div style="margin-top: 14px;">
+                    <p style="font-size: 13px; color: var(--text); font-weight: 600; margin-bottom: 8px; line-height: 1.4;">
+                        The group must accumulate <strong>{{ group_quest.target_count }}</strong> actions in this category this week.
+                    </p>
+                    <div class="progress-bar-container" style="margin-top: 10px;">
+                        <div class="progress-bar-fill" style="width: {{ group_quest_percent }}%; background: linear-gradient(90deg, var(--accent), var(--primary));"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; font-weight: 700; color: var(--text-muted);">
+                        <span>Group Progress: {{ group_quest_count }}/{{ group_quest.target_count }}</span>
+                        <span>{{ group_quest_percent }}%</span>
+                    </div>
+                </div>
+            {% else %}
+                <div style="margin-top: 14px; text-align: center; padding: 12px 0;">
+                    <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+                        Join or create a group to complete weekly team quests with friends and earn points!
+                    </p>
+                    <a href="{% url 'groups' %}">
+                        <button class="secondary-btn" style="padding: 8px 16px; font-size: 12px;">Go to Groups</button>
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right Column: Daily & Weekly Missions -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- Daily Missions Card -->
+        <div class="card daily-missions-card">
+            <div class="card-header">
+                <div>
+                    <p class="card-label">Daily Missions</p>
+                    <h2>{{ missions_completed }}/{{ missions_total }} completed</h2>
+                </div>
+
+                <span class="level-badge" style="background: var(--emerald-light); color: var(--emerald); font-weight: 800; border: 1px solid rgba(16, 185, 129, 0.2);">
+                    +{{ mission_bonus_points }} bonus pts
+                </span>
+            </div>
+
+            <div class="mission-list" style="margin-top: 12px;">
+                {% for user_mission in daily_missions %}
+                    <div class="mission-item {% if user_mission.is_completed %}completed{% endif %}" style="padding: 16px; margin-bottom: 12px; border-radius: 12px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 16px; transition: var(--transition);">
+                        <div style="display: flex; align-items: center; gap: 16px; flex: 1;">
+                            <div class="mission-status" style="width: 32px; height: 32px; border-radius: 50%; background: {% if user_mission.is_completed %}var(--emerald-light){% else %}var(--border){% endif %}; color: {% if user_mission.is_completed %}var(--emerald){% else %}var(--text-muted){% endif %}; display: grid; place-items: center; font-weight: 800; font-size: 14px;">
+                                {% if user_mission.is_completed %}
+                                    ✓
+                                {% else %}
+                                    {{ forloop.counter }}
+                                {% endif %}
+                            </div>
+
+                            <div class="mission-content" style="flex: 1;">
+                                <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 700; color: {% if user_mission.is_completed %}var(--text-muted){% else %}var(--text){% endif %}; text-decoration: {% if user_mission.is_completed %}line-through{% else %}none{% endif %};">{{ user_mission.mission.title }}</h4>
+                                <p style="margin: 0; font-size: 12px; color: var(--text-muted); line-height: 1.4;">{{ user_mission.mission.description }}</p>
+                            </div>
+                        </div>
+
+                        <strong style="font-size: 15px; color: {% if user_mission.is_completed %}var(--text-muted){% else %}var(--emerald){% endif %}; white-space: nowrap;">
+                            +{{ user_mission.mission.bonus_points }}
+                        </strong>
+                    </div>
+                {% empty %}
+                    {% include "components/empty_state.html" with icon="🎯" title="No daily missions" message="Daily missions will appear here." %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Weekly Missions Card -->
+        <div class="card weekly-missions-card">
+            <div class="card-header">
+                <div>
+                    <p class="card-label">Personal Weekly Missions</p>
+                    <h2>{{ weekly_completed }}/{{ weekly_total }} completed</h2>
+                </div>
+
+                <span class="level-badge" style="background: var(--primary-light); color: var(--primary); font-weight: 800; border: 1px solid rgba(78, 128, 84, 0.2);">
+                    +{{ weekly_bonus_points }} weekly pts
+                </span>
+            </div>
+
+            <div class="mission-list" style="margin-top: 12px;">
+                {% for user_mission in weekly_missions %}
+                    <div class="mission-item {% if user_mission.is_completed %}completed{% endif %}" style="padding: 16px; margin-bottom: 12px; border-radius: 12px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 16px; transition: var(--transition);">
+                        <div style="display: flex; align-items: center; gap: 16px; flex: 1;">
+                            <div class="mission-status" style="width: 32px; height: 32px; border-radius: 50%; background: {% if user_mission.is_completed %}var(--emerald-light){% else %}var(--border){% endif %}; color: {% if user_mission.is_completed %}var(--emerald){% else %}var(--text-muted){% endif %}; display: grid; place-items: center; font-weight: 800; font-size: 14px;">
+                                {% if user_mission.is_completed %}
+                                    ✓
+                                {% else %}
+                                    {{ forloop.counter }}
+                                {% endif %}
+                            </div>
+
+                            <div class="mission-content" style="flex: 1;">
+                                <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 700; color: {% if user_mission.is_completed %}var(--text-muted){% else %}var(--text){% endif %}; text-decoration: {% if user_mission.is_completed %}line-through{% else %}none{% endif %};">{{ user_mission.mission.title }}</h4>
+                                <p style="margin: 0 0 8px 0; font-size: 12px; color: var(--text-muted); line-height: 1.4;">{{ user_mission.mission.description }}</p>
+                                
+                                {% if not user_mission.is_completed %}
+                                    <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: var(--text-muted);">
+                                        <div class="progress-bar-container" style="flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 4px;">
+                                            <div class="progress-bar-fill" style="width: {% widthratio user_mission.completed_count user_mission.required_count 100 %}%; height: 100%; background: var(--primary); border-radius: 3px;"></div>
+                                        </div>
+                                        <span>{{ user_mission.completed_count }}/{{ user_mission.required_count }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <strong style="font-size: 15px; color: {% if user_mission.is_completed %}var(--text-muted){% else %}var(--primary){% endif %}; white-space: nowrap;">
+                            +{{ user_mission.mission.bonus_points }}
+                        </strong>
+                    </div>
+                {% empty %}
+                    {% include "components/empty_state.html" with icon="🎯" title="No weekly missions" message="Weekly missions will appear here." %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

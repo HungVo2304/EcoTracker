@@ -1,0 +1,58 @@
+<div class="card weekly-missions-card" style="margin-top: 24px;">
+    <div class="card-header">
+        <div>
+            <p class="card-label">Personal Weekly Missions</p>
+            <h2>{{ weekly_completed }}/{{ weekly_total }} completed</h2>
+        </div>
+
+        <span class="level-badge" style="background: var(--primary-light); color: var(--primary); font-weight: 800; border: 1px solid rgba(78, 128, 84, 0.2);">
+            +{{ weekly_bonus_points }} weekly pts
+        </span>
+    </div>
+
+    <div class="mission-list">
+        {% for user_mission in weekly_missions %}
+            <div class="mission-item {% if user_mission.is_completed %}completed{% endif %}" style="padding: 16px; margin-bottom: 12px; border-radius: 12px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 16px; transition: var(--transition);">
+                <div style="display: flex; align-items: center; gap: 16px; flex: 1;">
+                    <div class="mission-status" style="width: 32px; height: 32px; border-radius: 50%; background: {% if user_mission.is_completed %}var(--emerald-light){% else %}var(--border){% endif %}; color: {% if user_mission.is_completed %}var(--emerald){% else %}var(--text-muted){% endif %}; display: grid; place-items: center; font-weight: 800; font-size: 14px;">
+                        {% if user_mission.is_completed %}
+                            ✓
+                        {% else %}
+                            {{ forloop.counter }}
+                        {% endif %}
+                    </div>
+
+                    <div class="mission-content" style="flex: 1;">
+                        <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 700; color: {% if user_mission.is_completed %}var(--text-muted){% else %}var(--text){% endif %}; text-decoration: {% if user_mission.is_completed %}line-through{% else %}none{% endif %};">
+                            {% if user_mission.mission.category == 'recycling' %}♻️
+                            {% elif user_mission.mission.category == 'tree_planting' %}🌳
+                            {% elif user_mission.mission.category == 'green_transport' %}🚲
+                            {% elif user_mission.mission.category == 'clean_up' %}🧹
+                            {% elif user_mission.mission.category == 'saving_energy' %}⚡
+                            {% elif user_mission.mission.category == 'reusable_item' %}🥤
+                            {% endif %}
+                            {{ user_mission.mission.title }}
+                        </h4>
+                        <p style="margin: 0 0 8px 0; font-size: 12px; color: var(--text-muted); line-height: 1.4;">{{ user_mission.mission.description }}</p>
+                        
+                        {% if not user_mission.is_completed %}
+                            <!-- Progress bar for weekly multi-step mission -->
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: var(--text-muted);">
+                                <div class="progress-bar-container" style="flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 4px;">
+                                    <div class="progress-bar-fill" style="width: {% widthratio user_mission.completed_count user_mission.required_count 100 %}%; height: 100%; background: var(--primary); border-radius: 3px;"></div>
+                                </div>
+                                <span>{{ user_mission.completed_count }}/{{ user_mission.required_count }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <strong style="font-size: 15px; color: {% if user_mission.is_completed %}var(--text-muted){% else %}var(--primary){% endif %}; white-space: nowrap;">
+                    +{{ user_mission.mission.bonus_points }}
+                </strong>
+            </div>
+        {% empty %}
+            {% include "components/empty_state.html" with icon="🎯" title="No weekly missions" message="Weekly missions will appear here." %}
+        {% endfor %}
+    </div>
+</div>

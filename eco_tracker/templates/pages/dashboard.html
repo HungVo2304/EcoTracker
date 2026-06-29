@@ -10,13 +10,313 @@
     {% include "components/stat_card.html" with label="Actions Uploaded" value=action_count subtitle="eco actions completed" %}
 </section>
 
-<section class="clean-dashboard-main">
-    {% include "components/weekly_chart.html" %}
-    {% include "components/daily_missions.html" %}
+    <div class="dashboard-main-content" style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- AI Eco Coach Card -->
+        <div class="card" style="background: linear-gradient(135deg, var(--panel), var(--primary-light)); border: 1.5px solid var(--primary-glow); display: flex; align-items: center; gap: 20px; padding: 24px; border-radius: var(--radius-lg); position: relative; overflow: hidden;">
+            <!-- Glow background decorative circle -->
+            <div style="position: absolute; width: 100px; height: 100px; background: var(--primary); filter: blur(40px); opacity: 0.15; top: -30px; left: -30px; border-radius: 50%;"></div>
+            <div style="font-size: 44px; filter: drop-shadow(0 0 6px var(--primary-glow));">🧠</div>
+            <div style="flex: 1; z-index: 2;">
+                <p class="card-label" style="color: var(--primary); font-weight: 800; display: flex; align-items: center; gap: 6px;">
+                    <span>✨</span> Personal AI Eco Coach
+                </p>
+                <h3 style="font-size: 16px; font-weight: 800; color: var(--accent); font-family: 'Outfit', sans-serif; margin-bottom: 4px;">Coach Recommendation</h3>
+                <p style="font-size: 13.5px; line-height: 1.5; color: var(--text-main); font-weight: 500; margin: 0;">
+                    {{ ai_suggestion.suggestion_text }}
+                </p>
+            </div>
+        </div>
+
+        {% include "components/weekly_chart.html" %}
+
+        <!-- Daily Trivia Quiz Card -->
+        <div class="card" id="triviaCard" style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="card-header">
+                <div>
+                    <p class="card-label">DAILY CHALLENGE</p>
+                    <h2>Daily Eco Trivia</h2>
+                </div>
+                <span class="level-badge" id="triviaBadge" style="background: var(--primary-light); color: var(--primary); border: 1px solid var(--border); font-weight: 800;">
+                    {% if trivia_completed %}+{{ trivia_earned }} pts earned{% else %}Earn up to +15 pts{% endif %}
+                </span>
+            </div>
+
+            <!-- If already completed, show success screen -->
+            <div id="triviaSuccessScreen" style="display: {% if trivia_completed %}block{% else %}none{% endif %}; text-align: center; padding: 12px 0;">
+                <div style="font-size: 48px; margin-bottom: 8px;">🎉</div>
+                <h3 style="font-size: 18px; font-weight: 800; color: var(--accent); font-family: 'Outfit', sans-serif;">Trivia Completed!</h3>
+                <p class="muted-text" style="font-size: 13px; margin-top: 4px; margin-bottom: 0;">
+                    You got <strong style="color: var(--primary);" id="successCorrectCount">{{ trivia_correct }}</strong> out of 3 questions correct!
+                </p>
+                <p class="success-text" style="font-size: 14px; font-weight: 700; color: var(--emerald); margin-top: 8px;">
+                    Points credited: +<span id="successPoints">{{ trivia_earned }}</span> pts (Subject to daily cap).
+                </p>
+            </div>
+
+            <!-- Quiz Form (shown if not completed) -->
+            <div id="triviaQuizForm" style="display: {% if trivia_completed %}none{% else %}block{% endif %};">
+                <p class="muted-text" style="font-size: 13px; margin-top: -8px; margin-bottom: 20px; color: var(--text-muted);">
+                    Answer today's 3 eco trivia questions correctly to test your knowledge and claim bonus points!
+                </p>
+                <div class="trivia-questions-container" style="display: flex; flex-direction: column; gap: 24px;">
+                    {% for q in today_trivia %}
+                        <div class="trivia-question-block" data-q-id="{{ q.id }}" style="display: flex; flex-direction: column; gap: 12px;">
+                            <h4 style="font-size: 14.5px; font-weight: 700; color: var(--text-main); line-height: 1.4;">
+                                {{ forloop.counter }}. {{ q.question_text }}
+                            </h4>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <button type="button" class="trivia-option-btn" data-opt="A" onclick="selectOption(this, {{ q.id }}, 'A')" style="padding: 12px; border: 1.5px solid var(--border); background: var(--bg); border-radius: var(--radius-md); text-align: left; font-size: 13px; font-weight: 600; color: var(--text-main); cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 8px;">
+                                    <span style="background: var(--panel); width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: var(--text-muted); border: 1.5px solid var(--border); font-weight: 800;">A</span>
+                                    {{ q.option_a }}
+                                </button>
+                                <button type="button" class="trivia-option-btn" data-opt="B" onclick="selectOption(this, {{ q.id }}, 'B')" style="padding: 12px; border: 1.5px solid var(--border); background: var(--bg); border-radius: var(--radius-md); text-align: left; font-size: 13px; font-weight: 600; color: var(--text-main); cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 8px;">
+                                    <span style="background: var(--panel); width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: var(--text-muted); border: 1.5px solid var(--border); font-weight: 800;">B</span>
+                                    {{ q.option_b }}
+                                </button>
+                                <button type="button" class="trivia-option-btn" data-opt="C" onclick="selectOption(this, {{ q.id }}, 'C')" style="padding: 12px; border: 1.5px solid var(--border); background: var(--bg); border-radius: var(--radius-md); text-align: left; font-size: 13px; font-weight: 600; color: var(--text-main); cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 8px;">
+                                    <span style="background: var(--panel); width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: var(--text-muted); border: 1.5px solid var(--border); font-weight: 800;">C</span>
+                                    {{ q.option_c }}
+                                </button>
+                                <button type="button" class="trivia-option-btn" data-opt="D" onclick="selectOption(this, {{ q.id }}, 'D')" style="padding: 12px; border: 1.5px solid var(--border); background: var(--bg); border-radius: var(--radius-md); text-align: left; font-size: 13px; font-weight: 600; color: var(--text-main); cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 8px;">
+                                    <span style="background: var(--panel); width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: var(--text-muted); border: 1.5px solid var(--border); font-weight: 800;">D</span>
+                                    {{ q.option_d }}
+                                </button>
+                            </div>
+                            
+                            <!-- Dropdown Explanation (initially hidden) -->
+                            <div class="trivia-explanation" id="exp-{{ q.id }}" style="display: none; margin-top: 10px; padding: 12px 16px; border-radius: var(--radius-md); font-size: 12.5px; line-height: 1.4; background: var(--primary-light); border-left: 4px solid var(--primary); color: var(--text-main); transition: var(--transition);">
+                                <strong>Explanation:</strong> <span class="exp-text"></span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <button type="button" id="submitTriviaBtn" onclick="submitTriviaAnswers()" class="upload-btn" style="width: 100%; justify-content: center; margin-top: 24px; padding: 13px; font-size: 14px; font-weight: 800; border-radius: var(--radius-md); opacity: 0.5;" disabled>
+                    Submit Answers
+                </button>
+            </div>
+        </div>
+
+        <script>
+        const triviaAnswers = {};
+
+        function selectOption(btn, questionId, option) {
+            if (document.getElementById("triviaQuizForm").dataset.submitted === "true") return;
+
+            const parent = btn.parentElement;
+            const buttons = parent.querySelectorAll(".trivia-option-btn");
+            buttons.forEach(b => {
+                b.style.borderColor = "var(--border)";
+                b.style.background = "var(--bg)";
+                const dot = b.querySelector("span");
+                dot.style.background = "var(--panel)";
+                dot.style.color = "var(--text-muted)";
+                dot.style.borderColor = "var(--border)";
+            });
+
+            btn.style.borderColor = "var(--primary)";
+            btn.style.background = "var(--primary-light)";
+            const dot = btn.querySelector("span");
+            dot.style.background = "var(--primary)";
+            dot.style.color = "white";
+            dot.style.borderColor = "var(--primary)";
+
+            triviaAnswers[questionId] = option;
+
+            const totalQuestions = document.querySelectorAll(".trivia-question-block").length;
+            const answeredCount = Object.keys(triviaAnswers).length;
+            const submitBtn = document.getElementById("submitTriviaBtn");
+            
+            if (answeredCount === totalQuestions) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = "1";
+            }
+        }
+
+        function submitTriviaAnswers() {
+            const submitBtn = document.getElementById("submitTriviaBtn");
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Verifying...";
+
+            fetch("{% url 'submit_trivia' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                body: JSON.stringify({ answers: triviaAnswers })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById("triviaQuizForm").dataset.submitted = "true";
+                    submitBtn.style.display = "none";
+
+                    data.results.forEach(res => {
+                        const block = document.querySelector(`.trivia-question-block[data-q-id="${res.question_id}"]`);
+                        const buttons = block.querySelectorAll(".trivia-option-btn");
+                        
+                        buttons.forEach(b => {
+                            const opt = b.getAttribute("data-opt");
+                            b.disabled = true;
+                            
+                            if (opt === res.correct_option) {
+                                b.style.borderColor = "var(--emerald)";
+                                b.style.background = "var(--emerald-light)";
+                                const dot = b.querySelector("span");
+                                dot.style.background = "var(--emerald)";
+                                dot.style.color = "white";
+                                dot.style.borderColor = "var(--emerald)";
+                            } else if (triviaAnswers[res.question_id] === opt && !res.is_correct) {
+                                b.style.borderColor = "var(--danger)";
+                                b.style.background = "var(--danger-light)";
+                                const dot = b.querySelector("span");
+                                dot.style.background = "var(--danger)";
+                                dot.style.color = "white";
+                                dot.style.borderColor = "var(--danger)";
+                            }
+                        });
+
+                        const expDiv = document.getElementById(`exp-${res.question_id}`);
+                        expDiv.querySelector(".exp-text").textContent = res.explanation;
+                        
+                        if (res.is_correct) {
+                            expDiv.style.borderLeftColor = "var(--emerald)";
+                            expDiv.style.background = "var(--emerald-light)";
+                        } else {
+                            expDiv.style.borderLeftColor = "var(--danger)";
+                            expDiv.style.background = "var(--danger-light)";
+                        }
+                        expDiv.style.display = "block";
+                    });
+
+                    setTimeout(() => {
+                        document.getElementById("triviaBadge").textContent = `+${data.points_earned} pts earned`;
+                        document.getElementById("successCorrectCount").textContent = data.correct_count;
+                        document.getElementById("successPoints").textContent = data.points_earned;
+                        
+                        document.getElementById("triviaQuizForm").style.display = "none";
+                        document.getElementById("triviaSuccessScreen").style.display = "block";
+                        
+                        const scoreDisplay = document.querySelector(".weekly-chart-card h2, h2[style*='var(--emerald)'], .total-points-display");
+                        if (scoreDisplay) {
+                            const current = parseInt(scoreDisplay.textContent);
+                            if (!isNaN(current)) {
+                                scoreDisplay.textContent = `${current + data.points_earned} pts`;
+                            }
+                        }
+                    }, 4000);
+                } else {
+                    alert(data.error || "An error occurred.");
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Submit Answers";
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Connection error. Please try again.");
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Submit Answers";
+            });
+        }
+        </script>
+
+        {% include "components/recent_actions.html" %}
+    </div>
+    <div class="dashboard-side-panel" style="display: flex; flex-direction: column; gap: 24px;">
+        {% include "components/daily_cap_card.html" %}
+        {% include "components/daily_missions.html" %}
+        {% include "components/weekly_missions.html" %}
+    </div>
 </section>
 
-<section>
-    {% include "components/recent_actions.html" %}
-</section>
+{% if show_level_up %}
+<!-- Level Up Celebration Modal -->
+<div id="levelUpModal" class="celebration-modal-overlay">
+    <div class="celebration-modal-card">
+        <div class="celebration-badge-glow"></div>
+        <div class="celebration-crown">🏆</div>
+        <div class="celebration-icon">{{ level_info.icon }}</div>
+        
+        <h1 class="celebration-title">LEVEL UP!</h1>
+        <p class="celebration-subtitle">You transitioned from</p>
+        
+        <div class="celebration-ranks">
+            <span class="old-rank">{{ old_level }}</span>
+            <span class="rank-arrow">➔</span>
+            <span class="new-rank">{{ new_level }}</span>
+        </div>
+        
+        <p class="celebration-desc">"{{ level_info.description }}"</p>
+        
+        <button id="closeCelebrationBtn" class="celebration-btn">Keep Going! 🌱</button>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const modal = document.getElementById("levelUpModal");
+    const closeBtn = document.getElementById("closeCelebrationBtn");
+    
+    function createConfetti() {
+        const container = document.createElement("div");
+        container.classList.add("confetti-container");
+        document.body.appendChild(container);
+        
+        const colors = ["#4e8054", "#10b981", "#34d399", "#a7f3d0", "#fbbf24", "#fef08a"];
+        const shapes = ["leaf", "circle", "sparkle"];
+        
+        for (let i = 0; i < 80; i++) {
+            const particle = document.createElement("div");
+            particle.classList.add("confetti-particle");
+            
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const shape = shapes[Math.floor(Math.random() * shapes.length)];
+            
+            particle.style.backgroundColor = shape === "sparkle" ? "transparent" : color;
+            particle.style.left = Math.random() * 100 + "vw";
+            particle.style.top = -20 - Math.random() * 50 + "px";
+            
+            const size = 10 + Math.random() * 15;
+            particle.style.width = size + "px";
+            particle.style.height = size + "px";
+            
+            if (shape === "leaf") {
+                particle.style.borderRadius = "0 50% 0 50%";
+            } else if (shape === "sparkle") {
+                particle.innerHTML = "✨";
+                particle.style.fontSize = size + "px";
+                particle.style.color = color;
+            } else {
+                particle.style.borderRadius = "50%";
+            }
+            
+            particle.style.animationName = "fall-and-spin";
+            particle.style.animationDuration = (2.5 + Math.random() * 3.5) + "s";
+            particle.style.animationDelay = Math.random() * 2 + "s";
+            particle.style.animationTimingFunction = "cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+            
+            container.appendChild(particle);
+        }
+        
+        setTimeout(() => {
+            container.remove();
+        }, 6500);
+    }
+    
+    createConfetti();
+    
+    if (closeBtn) {
+        closeBtn.addEventListener("click", function() {
+            modal.classList.add("fade-out");
+            setTimeout(() => {
+                modal.remove();
+            }, 400);
+        });
+    }
+});
+</script>
+{% endif %}
 
 {% endblock %}

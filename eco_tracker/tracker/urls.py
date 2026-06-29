@@ -7,7 +7,8 @@ urlpatterns = [
     path("upload/", views.upload_action, name="upload_action"),
     path("ai/classify-action/", views.ai_classify_action, name="ai_classify_action"),
     path("feed/", views.eco_feed, name="eco_feed"),
-    path("actions/<int:action_id>/like/", views.like_action, name="like_action"),
+    path("missions/", views.missions, name="missions"),
+    path("actions/<int:action_id>/react/", views.react_action, name="react_action"),
     path("progress/", views.my_progress, name="my_progress"),
     
     path("friends/", views.friends, name="friends"),
@@ -27,6 +28,8 @@ urlpatterns = [
 
     path("leaderboard/", views.leaderboard, name="leaderboard"),
     path("profile/", views.profile, name="profile"),
+    path("shop/", views.frame_shop, name="frame_shop"),
+    path("trivia/submit/", views.submit_trivia, name="submit_trivia"),
 
     path("login/", auth_views.LoginView.as_view(template_name="pages/login.html"), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
