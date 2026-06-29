@@ -8,32 +8,43 @@
     </div>
 
     <nav class="sidebar-menu">
+        <p class="sidebar-section-title" style="margin-top: 8px;">Core</p>
         <a class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
-            Dashboard
-        </a>
-
-        <a class="{% if request.resolver_match.url_name == 'eco_feed' %}active{% endif %}" href="{% url 'eco_feed' %}">
-            Eco Feed
+            <span>📊</span> Dashboard
         </a>
 
         <a class="{% if request.resolver_match.url_name == 'my_progress' %}active{% endif %}" href="{% url 'my_progress' %}">
-            My Progress
-        </a>
-
-        <a class="{% if request.resolver_match.url_name == 'friends' %}active{% endif %}" href="{% url 'friends' %}">
-            Friends
-        </a>
-
-        <a class="{% if request.resolver_match.url_name == 'groups' %}active{% endif %}" href="{% url 'groups' %}">
-            Groups
-        </a>
-
-        <a class="{% if request.resolver_match.url_name == 'leaderboard' %}active{% endif %}" href="{% url 'leaderboard' %}">
-            Leaderboard
+            <span>📈</span> My Progress
         </a>
 
         <a class="{% if request.resolver_match.url_name == 'profile' %}active{% endif %}" href="{% url 'profile' %}">
-            Profile
+            <span>👤</span> Profile
+        </a>
+
+        <p class="sidebar-section-title">Community</p>
+        <a class="{% if request.resolver_match.url_name == 'eco_feed' %}active{% endif %}" href="{% url 'eco_feed' %}">
+            <span>💬</span> Eco Feed
+        </a>
+
+        <a class="{% if request.resolver_match.url_name == 'friends' %}active{% endif %}" href="{% url 'friends' %}">
+            <span>👥</span> Friends
+        </a>
+
+        <a class="{% if request.resolver_match.url_name == 'groups' %}active{% endif %}" href="{% url 'groups' %}">
+            <span>🛡️</span> Groups
+        </a>
+
+        <a class="{% if request.resolver_match.url_name == 'leaderboard' %}active{% endif %}" href="{% url 'leaderboard' %}">
+            <span>🏆</span> Leaderboard
+        </a>
+
+        <p class="sidebar-section-title">Challenges</p>
+        <a class="{% if request.resolver_match.url_name == 'missions' %}active{% endif %}" href="{% url 'missions' %}">
+            <span>🎯</span> Missions
+        </a>
+
+        <a class="{% if request.resolver_match.url_name == 'frame_shop' %}active{% endif %}" href="{% url 'frame_shop' %}">
+            <span>🛍️</span> Frame Shop
         </a>
     </nav>
 

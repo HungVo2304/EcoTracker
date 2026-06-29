@@ -20,10 +20,18 @@ from .models import (
     GroupInvite,
     UserDailyMission,
     DailyMission,
+    WeeklyMission,
+    UserWeeklyMission,
     Badge,
     UserBadge,
     EcoActionLike,
     GroupWeeklyQuest,
+    AvatarFrame,
+    UserAvatarFrame,
+    UserGroupQuestReward,
+    TriviaQuestion,
+    UserTriviaSubmission,
+    AICoachSuggestion,
 )
 
 from .forms import (
@@ -33,6 +41,7 @@ from .forms import (
     AvatarForm,
 )
 
+from django.conf import settings
 from .utils import (
     get_level_info,
     complete_missions_for_action,
@@ -42,6 +51,11 @@ from .utils import (
     check_and_award_badges,
     get_or_create_weekly_quest,
     create_default_badges,
+    get_weekly_mission_summary,
+    get_points_earned_today,
+    ECO_LEVELS,
+    create_default_trivia_questions,
+    generate_ai_coach_suggestion,
 )
 
 
@@ -84,6 +98,9 @@ def dashboard(request):
     actions = EcoAction.objects.filter(user=request.user).order_by("-created_at")
     recent_actions = actions[:5]
 
+    # Seed default trivia questions if none exist
+    create_default_trivia_questions()
+
     total_points = get_user_total_points(request.user)
     action_count = actions.count()
 
@@ -91,16 +108,71 @@ def dashboard(request):
     progress_percent = level_info["progress_percent"]
     impact_level = level_info["name"]
 
+    # Level-up check and celebration
+    profile_obj, created = UserProfile.objects.get_or_create(user=request.user)
+    current_level = level_info["name"]
+    show_level_up = False
+    old_level = ""
+    new_level = ""
+    
+    if profile_obj.last_level and profile_obj.last_level != current_level:
+        show_level_up = True
+        old_level = profile_obj.last_level
+        new_level = current_level
+        
+    profile_obj.last_level = current_level
+    profile_obj.save()
+
+    # Generate daily AI Eco Coach suggestion
+    ai_suggestion = generate_ai_coach_suggestion(request.user)
+
     today = timezone.localdate()
-    seven_days_ago = timezone.now() - timedelta(days=6)
 
-    today_actions = actions.filter(created_at__date=today)
-    today_points = today_actions.aggregate(total=Sum("points"))["total"] or 0
-    today_action_count = today_actions.count()
+    # Fetch today's trivia questions deterministically based on date
+    all_trivia = list(TriviaQuestion.objects.order_by("id"))
+    today_trivia_questions = []
+    if len(all_trivia) >= 3:
+        start_idx = today.toordinal() % len(all_trivia)
+        for idx in range(3):
+            today_trivia_questions.append(all_trivia[(start_idx + idx) % len(all_trivia)])
+    else:
+        today_trivia_questions = all_trivia[:3]
 
-    weekly_actions = actions.filter(created_at__gte=seven_days_ago)
-    weekly_points = weekly_actions.aggregate(total=Sum("points"))["total"] or 0
-    weekly_action_count = weekly_actions.count()
+    trivia_submission = UserTriviaSubmission.objects.filter(user=request.user, date=today).first()
+    trivia_completed = trivia_submission.questions_answered >= 3 if trivia_submission else False
+    trivia_correct = trivia_submission.correct_answers if trivia_submission else 0
+    trivia_earned = trivia_submission.earned_points if trivia_submission else 0
+    seven_days_ago_date = today - timedelta(days=6)
+
+    # Calculate today's points from both legacy actions and completed missions
+    today_action_points = actions.filter(created_at__date=today).aggregate(total=Sum("points"))["total"] or 0
+    today_daily_points = UserDailyMission.objects.filter(
+        user=request.user,
+        is_completed=True,
+        date=today
+    ).aggregate(total=Sum("earned_points"))["total"] or 0
+    today_weekly_points = UserWeeklyMission.objects.filter(
+        user=request.user,
+        is_completed=True,
+        completed_at__date=today
+    ).aggregate(total=Sum("earned_points"))["total"] or 0
+    today_points = today_action_points + today_daily_points + today_weekly_points
+    today_action_count = actions.filter(created_at__date=today).count()
+
+    # Calculate weekly points from both legacy actions and completed missions in the last 7 days
+    weekly_action_points = actions.filter(created_at__date__gte=seven_days_ago_date).aggregate(total=Sum("points"))["total"] or 0
+    weekly_daily_points = UserDailyMission.objects.filter(
+        user=request.user,
+        is_completed=True,
+        date__gte=seven_days_ago_date
+    ).aggregate(total=Sum("earned_points"))["total"] or 0
+    weekly_weekly_points = UserWeeklyMission.objects.filter(
+        user=request.user,
+        is_completed=True,
+        completed_at__date__gte=seven_days_ago_date
+    ).aggregate(total=Sum("earned_points"))["total"] or 0
+    weekly_points = weekly_action_points + weekly_daily_points + weekly_weekly_points
+    weekly_action_count = actions.filter(created_at__date__gte=seven_days_ago_date).count()
 
     category_map = dict(EcoAction.CATEGORY_CHOICES)
 
@@ -144,11 +216,24 @@ def dashboard(request):
     for i in range(6, -1, -1):
         day = today - timedelta(days=i)
 
-        day_points = (
-            actions
-            .filter(created_at__date=day)
-            .aggregate(total=Sum("points"))["total"] or 0
-        )
+        # 1. Points from EcoActions uploaded on this day (legacy points)
+        day_action_points = actions.filter(created_at__date=day).aggregate(total=Sum("points"))["total"] or 0
+
+        # 2. Points earned on this day from daily missions
+        day_daily_points = UserDailyMission.objects.filter(
+            user=request.user,
+            is_completed=True,
+            date=day
+        ).aggregate(total=Sum("earned_points"))["total"] or 0
+        
+        # 3. Points earned on this day from weekly missions
+        day_weekly_points = UserWeeklyMission.objects.filter(
+            user=request.user,
+            is_completed=True,
+            completed_at__date=day
+        ).aggregate(total=Sum("earned_points"))["total"] or 0
+        
+        day_points = day_action_points + day_daily_points + day_weekly_points
 
         weekly_chart.append({
             "label": day.strftime("%a"),
@@ -166,6 +251,13 @@ def dashboard(request):
     active_group = EcoGroup.objects.filter(members=request.user).first()
 
     mission_summary = get_today_mission_summary(request.user)
+    weekly_summary = get_weekly_mission_summary(request.user)
+    
+    daily_points_earned = get_points_earned_today(request.user)
+    daily_points_cap = getattr(settings, "DAILY_POINTS_CAP", 100)
+    daily_points_percent = min(100, int((daily_points_earned / daily_points_cap) * 100))
+    daily_points_remaining = max(0, daily_points_cap - daily_points_earned)
+
     context = {
         "page_title": "Dashboard",
         "page_subtitle": "Upload actions, earn points, and grow your eco impact",
@@ -196,9 +288,76 @@ def dashboard(request):
         "missions_completed": mission_summary["completed"],
         "missions_total": mission_summary["total"],
         "mission_bonus_points": mission_summary["bonus_points"],
+
+        "weekly_missions": weekly_summary["missions"],
+        "weekly_completed": weekly_summary["completed"],
+        "weekly_total": weekly_summary["total"],
+        "weekly_bonus_points": weekly_summary["bonus_points"],
+
+        "daily_points_earned": daily_points_earned,
+        "daily_points_cap": daily_points_cap,
+        "daily_points_percent": daily_points_percent,
+        "daily_points_remaining": daily_points_remaining,
+        "show_level_up": show_level_up,
+        "old_level": old_level,
+        "new_level": new_level,
+        "ai_suggestion": ai_suggestion,
+        "today_trivia": today_trivia_questions,
+        "trivia_completed": trivia_completed,
+        "trivia_correct": trivia_correct,
+        "trivia_earned": trivia_earned,
     }
 
     return render(request, "pages/dashboard.html", context)
+
+
+@login_required
+def missions(request):
+    # Fetch Daily Missions
+    mission_summary = get_today_mission_summary(request.user)
+    
+    # Fetch Weekly Missions
+    weekly_summary = get_weekly_mission_summary(request.user)
+    
+    # Fetch Daily Points Cap
+    daily_points_earned = get_points_earned_today(request.user)
+    daily_points_cap = getattr(settings, "DAILY_POINTS_CAP", 100)
+    daily_points_percent = min(100, int((daily_points_earned / daily_points_cap) * 100))
+    daily_points_remaining = max(0, daily_points_cap - daily_points_earned)
+    
+    # Fetch Group Weekly Quest (if user is in a group)
+    active_group = EcoGroup.objects.filter(members=request.user).first()
+    group_quest = None
+    group_quest_count = 0
+    group_quest_percent = 0
+    if active_group:
+        group_quest, group_quest_count, group_quest_percent = get_or_create_weekly_quest(active_group)
+        
+    context = {
+        "page_title": "Eco Quests & Missions",
+        "page_subtitle": "Complete daily, weekly, and team missions to earn Eco Points",
+        
+        "daily_missions": mission_summary["missions"],
+        "missions_completed": mission_summary["completed"],
+        "missions_total": mission_summary["total"],
+        "mission_bonus_points": mission_summary["bonus_points"],
+        
+        "weekly_missions": weekly_summary["missions"],
+        "weekly_completed": weekly_summary["completed"],
+        "weekly_total": weekly_summary["total"],
+        "weekly_bonus_points": weekly_summary["bonus_points"],
+        
+        "daily_points_earned": daily_points_earned,
+        "daily_points_cap": daily_points_cap,
+        "daily_points_percent": daily_points_percent,
+        "daily_points_remaining": daily_points_remaining,
+        
+        "active_group": active_group,
+        "group_quest": group_quest,
+        "group_quest_count": group_quest_count,
+        "group_quest_percent": group_quest_percent,
+    }
+    return render(request, "pages/missions.html", context)
 
 
 # =========================
@@ -248,22 +407,38 @@ def upload_action(request):
             )
 
             category_name = eco_action.get_category_display()
-            msg = f"Action classified as {category_name}! +{eco_action.points} points awarded"
+            msg = f"Action verified by AI as {category_name}."
             
-            if multiplier > 1.0:
-                msg += f" (includes {multiplier}x multiplier for {streak_count}-day 🔥 streak!)"
-            elif streak_count > 1:
-                msg += f" (🔥 {streak_count}-day streak!)"
+            if streak_count > 1:
+                msg += f" Continuous active streak: 🔥 {streak_count} days ({multiplier}x multiplier)."
                 
             if completed_missions:
-                mission_titles = ", ".join(
-                    mission.mission.title for mission in completed_missions
-                )
-                msg += f". Daily mission completed: {mission_titles}."
+                completed_dailies = [m for m in completed_missions if not hasattr(m, 'required_count')]
+                completed_weeklies = [m for m in completed_missions if hasattr(m, 'required_count') and m.is_completed]
+                progressed_weeklies = [m for m in completed_missions if hasattr(m, 'required_count') and not m.is_completed]
+                
+                if completed_dailies:
+                    daily_titles = ", ".join(m.mission.title for m in completed_dailies)
+                    daily_points = sum(m.earned_points for m in completed_dailies)
+                    msg += f" Completed daily missions: {daily_titles} (+{daily_points} pts)."
+                    
+                    # Check for Perfect Day Bonus
+                    perfect_bonus = sum(getattr(m, 'perfect_day_bonus', 0) for m in completed_dailies)
+                    if perfect_bonus > 0:
+                        msg += f" 🎉 Perfect Day Bonus! You completed all daily missions and earned an extra +{perfect_bonus} pts!"
+                if completed_weeklies:
+                    weekly_titles = ", ".join(m.mission.title for m in completed_weeklies)
+                    weekly_points = sum(m.earned_points for m in completed_weeklies)
+                    msg += f" Completed weekly missions: {weekly_titles} (+{weekly_points} pts)."
+                if progressed_weeklies:
+                    progress_info = ", ".join(f"{m.mission.title} ({m.completed_count}/{m.required_count})" for m in progressed_weeklies)
+                    msg += f" Weekly mission progress: {progress_info}."
+            else:
+                msg += " (Upload successful! Complete daily or weekly missions to earn points)."
                 
             if new_badges:
                 badge_names = ", ".join(f"{b.icon} {b.name}" for b in new_badges)
-                msg += f" 🏆 Achievements Unlocked: {badge_names}!"
+                msg += f" 🏆 New badges unlocked: {badge_names}!"
                 
             msg += f" AI Explanation: {ai_result['reason']}"
             messages.success(request, msg)
@@ -325,7 +500,7 @@ def edit_action(request, action_id):
 
             messages.success(
                 request,
-                f"Eco action updated and re-classified as {updated_action.get_category_display()}! New score: +{updated_action.points} pts."
+                f"Eco action updated and re-classified as {updated_action.get_category_display()}! AI Explanation: {ai_result['reason']}"
             )
 
             return redirect("my_progress")
@@ -387,6 +562,21 @@ def my_progress(request):
     progress_percent = level_info["progress_percent"]
     impact_level = level_info["name"]
 
+    # Level-up check and celebration
+    profile_obj, created = UserProfile.objects.get_or_create(user=request.user)
+    current_level = level_info["name"]
+    show_level_up = False
+    old_level = ""
+    new_level = ""
+    
+    if profile_obj.last_level and profile_obj.last_level != current_level:
+        show_level_up = True
+        old_level = profile_obj.last_level
+        new_level = current_level
+        
+    profile_obj.last_level = current_level
+    profile_obj.save()
+
     category_stats = (
         actions
         .values("category")
@@ -407,6 +597,10 @@ def my_progress(request):
 
         "category_stats": category_stats,
         "actions": actions,
+        "eco_levels": ECO_LEVELS,
+        "show_level_up": show_level_up,
+        "old_level": old_level,
+        "new_level": new_level,
     }
 
     return render(request, "pages/my_progress.html", context)
@@ -829,18 +1023,24 @@ def delete_group(request, group_id):
 @login_required
 def leaderboard(request):
     actions_subquery = EcoAction.objects.filter(user=OuterRef("pk")).values("user").annotate(total=Sum("points")).values("total")
-    missions_subquery = UserDailyMission.objects.filter(user=OuterRef("pk"), is_completed=True).values("user").annotate(total=Sum("mission__bonus_points")).values("total")
+    daily_missions_subquery = UserDailyMission.objects.filter(user=OuterRef("pk"), is_completed=True).values("user").annotate(total=Sum("earned_points")).values("total")
+    weekly_missions_subquery = UserWeeklyMission.objects.filter(user=OuterRef("pk"), is_completed=True).values("user").annotate(total=Sum("earned_points")).values("total")
+    group_quests_subquery = UserGroupQuestReward.objects.filter(user=OuterRef("pk")).values("user").annotate(total=Sum("earned_points")).values("total")
+    trivia_subquery = UserTriviaSubmission.objects.filter(user=OuterRef("pk")).values("user").annotate(total=Sum("earned_points")).values("total")
 
     users = (
         User.objects
         .annotate(
             action_points=Coalesce(Subquery(actions_subquery), Value(0)),
-            bonus_points=Coalesce(Subquery(missions_subquery), Value(0)),
+            daily_points=Coalesce(Subquery(daily_missions_subquery), Value(0)),
+            weekly_points=Coalesce(Subquery(weekly_missions_subquery), Value(0)),
+            group_points=Coalesce(Subquery(group_quests_subquery), Value(0)),
+            trivia_points=Coalesce(Subquery(trivia_subquery), Value(0)),
             total_actions=Count("eco_actions", distinct=True)
         )
         .annotate(
             total_points=ExpressionWrapper(
-                F("action_points") + F("bonus_points"),
+                F("action_points") + F("daily_points") + F("weekly_points") + F("group_points") + F("trivia_points"),
                 output_field=IntegerField()
             )
         )
@@ -873,11 +1073,16 @@ def leaderboard(request):
             user_total_points = ranked_user.total_points
             user_total_actions = ranked_user.total_actions
 
+    podium_users = leaderboard_users[:3]
+    table_users = leaderboard_users[3:]
+
     context = {
         "page_title": "Leaderboard",
         "page_subtitle": "See who has the strongest eco impact",
 
         "leaderboard_users": leaderboard_users,
+        "podium_users": podium_users,
+        "table_users": table_users,
         "user_rank": user_rank,
         "user_total_points": user_total_points,
         "user_total_actions": user_total_actions,
@@ -982,6 +1187,7 @@ def profile(request):
         "profile": profile_obj,
         "badges": badges_list,
         "habit_analytics": habit_analytics,
+        "eco_levels": ECO_LEVELS,
     }
 
     return render(request, "pages/profile.html", context)
@@ -1060,46 +1266,236 @@ def eco_feed(request):
     # Combine all visible user IDs: user, friends, group members
     visible_user_ids = list(set([request.user.id] + friend_ids + group_member_ids))
     
-    # Fetch recent actions, annotated with likes counts and whether current user liked it
-    from django.db.models import Exists, OuterRef
-    
+    # Fetch recent actions
     actions = (
         EcoAction.objects
         .filter(user_id__in=visible_user_ids)
         .select_related("user", "user__profile")
-        .annotate(
-            likes_count=Count("likes", distinct=True),
-            liked_by_user=Exists(EcoActionLike.objects.filter(action=OuterRef("pk"), user=request.user))
-        )
         .order_by("-created_at")
     )
+    
+    visible_actions = list(actions[:30])
+    
+    # Fetch all reactions for these actions in a single optimized query
+    action_ids = [a.id for a in visible_actions]
+    reactions = EcoActionLike.objects.filter(action_id__in=action_ids).select_related("user")
+    
+    # Group reactions in memory to avoid N+1 queries
+    from collections import defaultdict
+    reactions_map = defaultdict(lambda: defaultdict(list))
+    user_reactions_map = defaultdict(set)
+    
+    for r in reactions:
+        reactions_map[r.action_id][r.reaction_type].append(r.user.username)
+        if r.user == request.user:
+            user_reactions_map[r.action_id].add(r.reaction_type)
+            
+    # Attach reaction counts and states dynamically to each action
+    for action in visible_actions:
+        action.reactions_data = {
+            "like": {
+                "count": len(reactions_map[action.id]["like"]),
+                "active": "like" in user_reactions_map[action.id],
+            },
+            "recycle": {
+                "count": len(reactions_map[action.id]["recycle"]),
+                "active": "recycle" in user_reactions_map[action.id],
+            },
+            "tree": {
+                "count": len(reactions_map[action.id]["tree"]),
+                "active": "tree" in user_reactions_map[action.id],
+            },
+            "energy": {
+                "count": len(reactions_map[action.id]["energy"]),
+                "active": "energy" in user_reactions_map[action.id],
+            },
+        }
     
     context = {
         "page_title": "Eco Feed",
         "page_subtitle": "See the environmental impact of your community",
-        "actions": actions[:30],
+        "actions": visible_actions,
     }
     return render(request, "pages/eco_feed.html", context)
 
 
 @login_required
-def like_action(request, action_id):
+def react_action(request, action_id):
     if request.method != "POST":
         return JsonResponse({"success": False, "error": "Invalid method."}, status=405)
         
     action = get_object_or_404(EcoAction, id=action_id)
-    like, created = EcoActionLike.objects.get_or_create(user=request.user, action=action)
+    reaction_type = request.POST.get("reaction_type", "like")
+    
+    if reaction_type not in ["like", "recycle", "tree", "energy"]:
+        return JsonResponse({"success": False, "error": "Invalid reaction type."}, status=400)
+        
+    reaction, created = EcoActionLike.objects.get_or_create(
+        user=request.user, 
+        action=action,
+        reaction_type=reaction_type
+    )
     
     if not created:
-        # Already liked, unlike it
-        like.delete()
-        liked = False
+        # Already reacted with this type, remove it
+        reaction.delete()
+        reacted = False
     else:
-        liked = True
+        reacted = True
         
-    likes_count = action.likes.count()
+    # Get updated counts for all reactions on this action
+    counts = {}
+    for r_type in ["like", "recycle", "tree", "energy"]:
+        counts[r_type] = EcoActionLike.objects.filter(action=action, reaction_type=r_type).count()
+        
     return JsonResponse({
         "success": True,
-        "liked": liked,
-        "likes_count": likes_count
+        "reacted": reacted,
+        "reaction_type": reaction_type,
+        "counts": counts
     })
+
+
+@login_required
+def submit_trivia(request):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Invalid method."}, status=405)
+        
+    import json
+    try:
+        data = json.loads(request.body)
+        answers = data.get("answers", {}) # dict of question_id: option (A/B/C/D)
+    except Exception:
+        return JsonResponse({"success": False, "error": "Invalid JSON payload."}, status=400)
+        
+    if len(answers) < 3:
+        return JsonResponse({"success": False, "error": "Please answer all 3 questions."}, status=400)
+        
+    today = timezone.localdate()
+    submission, created = UserTriviaSubmission.objects.get_or_create(
+        user=request.user,
+        date=today,
+        defaults={"questions_answered": 0, "correct_answers": 0, "earned_points": 0}
+    )
+    
+    if submission.questions_answered >= 3:
+        return JsonResponse({"success": False, "error": "You have already completed today's trivia!"}, status=400)
+        
+    correct_count = 0
+    results_data = []
+    
+    for q_id_str, selected_opt in answers.items():
+        q_id = int(q_id_str)
+        question = get_object_or_404(TriviaQuestion, id=q_id)
+        is_correct = question.correct_option == selected_opt
+        if is_correct:
+            correct_count += 1
+        results_data.append({
+            "question_id": q_id,
+            "correct_option": question.correct_option,
+            "is_correct": is_correct,
+            "explanation": question.explanation
+        })
+        
+    # Award points: +5 per correct answer, capped at remaining daily cap
+    daily_cap = getattr(settings, "DAILY_POINTS_CAP", 100)
+    earned_today = get_points_earned_today(request.user)
+    remaining_cap = max(0, daily_cap - earned_today)
+    points_to_award = min(correct_count * 5, remaining_cap)
+    
+    submission.questions_answered = 3
+    submission.correct_answers = correct_count
+    submission.earned_points = points_to_award
+    submission.save()
+    
+    return JsonResponse({
+        "success": True,
+        "correct_count": correct_count,
+        "points_earned": points_to_award,
+        "results": results_data
+    })
+
+
+@login_required
+def frame_shop(request):
+    # Seed default frames if none exist
+    if not AvatarFrame.objects.exists():
+        AvatarFrame.objects.create(
+            code="emerald_glow",
+            name="Emerald Glow",
+            cost=100,
+            css_style="border: 3.5px solid var(--emerald); box-shadow: 0 0 12px var(--emerald); animation: pulse-ring 2s infinite;",
+            preview_emoji="💚"
+        )
+        AvatarFrame.objects.create(
+            code="solar_neon",
+            name="Neon Solar",
+            cost=150,
+            css_style="border: 3.5px solid var(--warning); box-shadow: 0 0 14px var(--warning); animation: flame-pulsate 1.5s infinite;",
+            preview_emoji="⚡"
+        )
+        AvatarFrame.objects.create(
+            code="cosmic_forest",
+            name="Cosmic Forest",
+            cost=250,
+            css_style="border: 3.5px dashed var(--primary); box-shadow: 0 0 16px var(--primary-glow); animation: spin-avatar-frame 4s linear infinite;",
+            preview_emoji="🌌"
+        )
+        
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    total_points = get_user_total_points(request.user)
+    available_points = max(0, total_points - profile.points_spent)
+    
+    if request.method == "POST":
+        action = request.POST.get("action")
+        frame_code = request.POST.get("frame_code")
+        frame = get_object_or_404(AvatarFrame, code=frame_code)
+        
+        if action == "purchase":
+            # Check if already owned
+            if UserAvatarFrame.objects.filter(user=request.user, frame=frame).exists():
+                messages.info(request, f"You already own the {frame.name} frame.")
+            elif available_points < frame.cost:
+                messages.error(request, "Insufficient points to purchase this frame.")
+            else:
+                UserAvatarFrame.objects.create(user=request.user, frame=frame)
+                profile.points_spent += frame.cost
+                profile.save()
+                messages.success(request, f"Successfully purchased the {frame.name} frame!")
+                
+        elif action == "equip":
+            # Check if owned
+            if UserAvatarFrame.objects.filter(user=request.user, frame=frame).exists():
+                profile.active_frame = frame
+                profile.save()
+                messages.success(request, f"Successfully equipped the {frame.name} frame!")
+            else:
+                messages.error(request, "You must purchase this frame before equipping it.")
+                
+        elif action == "unequip":
+            profile.active_frame = None
+            profile.save()
+            messages.success(request, "Frame unequipped successfully.")
+            
+        return redirect("frame_shop")
+        
+    all_frames = AvatarFrame.objects.all()
+    owned_frame_ids = list(UserAvatarFrame.objects.filter(user=request.user).values_list("frame_id", flat=True))
+    
+    frames_data = []
+    for f in all_frames:
+        frames_data.append({
+            "frame": f,
+            "owned": f.id in owned_frame_ids,
+            "equipped": profile.active_frame == f
+        })
+        
+    context = {
+        "page_title": "Avatar Frame Shop",
+        "page_subtitle": "Spend your hard-earned points on premium animated avatar frames",
+        "available_points": available_points,
+        "total_points": total_points,
+        "frames": frames_data,
+        "active_frame": profile.active_frame
+    }
+    return render(request, "pages/frame_shop.html", context)

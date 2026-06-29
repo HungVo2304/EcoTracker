@@ -23,57 +23,35 @@
             <p class="card-label">Level Roadmap</p>
             <h2>Your Eco Journey</h2>
         </div>
-        <span class="level-badge">
-            {{ total_points }} pts all-time
-        </span>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <button onclick="openShareModal()" class="secondary-btn" style="padding: 10px 18px; font-size: 13px; display: flex; align-items: center; gap: 6px; background: var(--panel); border: 1.5px solid var(--primary); color: var(--primary); cursor: pointer; border-radius: var(--radius-sm); font-weight: 700;">
+                <span>📤</span> Share Card
+            </button>
+            <span class="level-badge">
+                {{ total_points }} pts accumulated
+            </span>
+        </div>
     </div>
 
     <div class="eco-roadmap">
-        <div class="eco-roadmap-step {% if total_points >= 0 %}active{% endif %}">
-            <div class="eco-roadmap-icon">🌱</div>
-            <h4>Eco Beginner</h4>
-            <p>0 pts</p>
-        </div>
-
-        <div class="eco-roadmap-line {% if total_points >= 100 %}active{% endif %}"></div>
-
-        <div class="eco-roadmap-step {% if total_points >= 100 %}active{% endif %}">
-            <div class="eco-roadmap-icon">🍃</div>
-            <h4>Green Starter</h4>
-            <p>100 pts</p>
-        </div>
-
-        <div class="eco-roadmap-line {% if total_points >= 300 %}active{% endif %}"></div>
-
-        <div class="eco-roadmap-step {% if total_points >= 300 %}active{% endif %}">
-            <div class="eco-roadmap-icon">🌿</div>
-            <h4>Eco Warrior</h4>
-            <p>300 pts</p>
-        </div>
-
-        <div class="eco-roadmap-line {% if total_points >= 600 %}active{% endif %}"></div>
-
-        <div class="eco-roadmap-step {% if total_points >= 600 %}active{% endif %}">
-            <div class="eco-roadmap-icon">🌍</div>
-            <h4>Planet Protector</h4>
-            <p>600 pts</p>
-        </div>
-
-        <div class="eco-roadmap-line {% if total_points >= 1000 %}active{% endif %}"></div>
-
-        <div class="eco-roadmap-step {% if total_points >= 1000 %}active{% endif %}">
-            <div class="eco-roadmap-icon">🏆</div>
-            <h4>Climate Champion</h4>
-            <p>1000 pts</p>
-        </div>
-
-        <div class="eco-roadmap-line {% if total_points >= 1500 %}active{% endif %}"></div>
-
-        <div class="eco-roadmap-step {% if total_points >= 1500 %}active{% endif %}">
-            <div class="eco-roadmap-icon">🛡️</div>
-            <h4>Earth Guardian</h4>
-            <p>1500 pts</p>
-        </div>
+        {% for lvl in eco_levels %}
+            <div class="eco-roadmap-step {% if total_points >= lvl.min_points %}active{% endif %} {% if lvl.name == level_info.name %}current-level-node{% endif %}"
+                 style="cursor: pointer;"
+                 data-name="{{ lvl.name }}"
+                 data-icon="{{ lvl.icon }}"
+                 data-min="{{ lvl.min_points }}"
+                 data-max="{{ lvl.max_points|default:'Unlimited' }}"
+                 data-desc="{{ lvl.description }}"
+                 data-unlocked="{% if total_points >= lvl.min_points %}true{% else %}false{% endif %}"
+                 onclick="openLevelDetails(this)">
+                <div class="eco-roadmap-icon">{{ lvl.icon }}</div>
+                <h4>{{ lvl.name }}</h4>
+                <p>{{ lvl.min_points }} pts</p>
+            </div>
+            {% if not forloop.last %}
+                <div class="eco-roadmap-line {% if lvl.max_points and total_points >= lvl.max_points %}active{% endif %}"></div>
+            {% endif %}
+        {% endfor %}
     </div>
 </div>
 
@@ -106,22 +84,354 @@
                 <h4>{{ action.get_category_display }}</h4>
                 <p>{{ action.caption }}</p>
 
-                <div class="gallery-actions">
-                    <a href="{% url 'edit_action' action.id %}">
-                        <button class="small-btn">Edit</button>
-                    </a>
-                    <a href="{% url 'delete_action' action.id %}">
-                        <button class="danger-btn">Delete</button>
-                    </a>
+                <div class="gallery-actions" style="width: 100%;">
+                    <button class="small-btn" style="width: 100%; justify-content: center; font-weight: 800; border: none; cursor: pointer; padding: 10px;" onclick="openActionDetails('{% if action.image %}{{ action.image.url }}{% endif %}', '{{ action.get_category_display }}', '{{ action.caption|escapejs }}', '{{ action.points }}', '{{ action.created_at|date:'d M Y, H:i' }}')">View Details</button>
                 </div>
             </div>
-        </div>
-        {% empty %}
-        <div style="grid-column: 1 / -1;">
-            {% include "components/empty_state.html" with icon="🌿" title="No eco actions yet" message="Your uploaded actions will appear here as a personal eco gallery." button_url="/upload/" button_text="Upload First Action" %}
         </div>
         {% endfor %}
     </div>
 </div>
 
+<!-- Action Details Modal -->
+<div id="actionDetailsModal" class="celebration-modal-overlay" style="display: none;">
+    <div class="celebration-modal-card info-modal-card" style="max-width: 520px; padding: 28px;">
+        <span class="close-modal-btn" onclick="closeActionDetails()">&times;</span>
+        <h2 style="color: var(--accent); font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 18px; text-align: left;">Action Details</h2>
+        
+        <!-- Image display -->
+        <div id="actionModalImageWrapper" style="width: 100%; height: 260px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); background: var(--bg); margin-bottom: 18px; position: relative;">
+            <img id="actionModalImage" src="" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+            <div id="actionModalImagePlaceholder" style="width: 100%; height: 100%; display: none; place-items: center; justify-content: center; font-size: 48px; background: var(--primary-light);">🌱</div>
+            <span id="actionModalPoints" class="gallery-points-tag" style="top: 14px; right: 14px; position: absolute;">+0 pts</span>
+        </div>
+
+        <!-- Details -->
+        <div style="text-align: left; display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span id="actionModalCategory" class="level-badge" style="background: var(--primary-light); color: var(--primary); font-weight: 800; font-size: 11px; padding: 4px 10px; text-transform: uppercase; border: 1px solid var(--border);">Category</span>
+                <small id="actionModalDate" style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Date</small>
+            </div>
+            
+            <div style="background: var(--bg); border: 1px solid var(--border); padding: 14px; border-radius: var(--radius-md);">
+                <h4 style="color: var(--text-muted); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">User Caption</h4>
+                <p id="actionModalCaption" style="font-size: 14px; color: var(--text-main); font-weight: 600; line-height: 1.5; margin: 0;"></p>
+            </div>
+
+            <!-- AI Verification Notice -->
+            <div style="background: var(--primary-light); border-radius: var(--radius-md); padding: 14px; border: 1.5px solid var(--border); display: flex; gap: 12px; align-items: flex-start;">
+                <span style="font-size: 20px; line-height: 1;">🛡️</span>
+                <div>
+                    <h4 style="font-size: 12px; color: var(--primary); font-weight: 800; margin: 0 0 2px 0;">AI Verification Approved</h4>
+                    <p style="font-size: 11.5px; color: var(--text-muted); line-height: 1.4; margin: 0;">
+                        Verified automatically by EcoTracker AI. The uploaded photo content and user caption successfully match the criteria for <strong id="actionModalCategoryExplain"></strong>.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <button onclick="closeActionDetails()" class="celebration-btn" style="margin-top: 0; width: 100%;">Close Details</button>
+    </div>
+</div>
+
+<!-- Level Details Modal -->
+<div id="levelDetailsModal" class="celebration-modal-overlay" style="display: none;">
+    <div class="celebration-modal-card info-modal-card">
+        <span class="close-modal-btn" onclick="closeLevelDetails()">&times;</span>
+        <div id="modalLevelIcon" class="celebration-icon" style="font-size: 50px; margin-bottom: 12px;">🌱</div>
+        <h2 id="modalLevelName" style="color: var(--accent); font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; margin-bottom: 4px;">Level Name</h2>
+        <p id="modalLevelPoints" class="level-badge" style="display: inline-block; margin-bottom: 16px; font-size: 12px; font-weight: 800;">0 - 100 pts</p>
+        
+        <div class="level-info-content" style="text-align: left; background: var(--bg); border: 1px solid var(--border); padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px;">
+            <h4 style="color: var(--text-main); font-weight: 700; margin-bottom: 6px; font-size: 14px;">Description</h4>
+            <p id="modalLevelDesc" style="color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-bottom: 12px;">Level description goes here.</p>
+            
+            <h4 style="color: var(--text-main); font-weight: 700; margin-bottom: 6px; font-size: 14px;">Exclusive Unlocks</h4>
+            <ul id="modalLevelUnlocks" style="color: var(--text-muted); font-size: 13px; padding-left: 20px; line-height: 1.6;">
+                <li>Exclusive Level Avatar Border</li>
+                <li>Access to advanced daily quests</li>
+                <li>Special Discord & community badge</li>
+            </ul>
+        </div>
+        
+        <button onclick="closeLevelDetails()" class="celebration-btn" style="margin-top: 0; width: 100%;">Close Details</button>
+    </div>
+</div>
+
+<!-- Share Progress Modal -->
+<div id="shareModal" class="celebration-modal-overlay" style="display: none;">
+    <div class="celebration-modal-card info-modal-card share-card-modal" style="max-width: 500px;">
+        <span class="close-modal-btn" onclick="closeShareModal()">&times;</span>
+        <h2 style="color: var(--accent); font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 4px;">Share Achievement</h2>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Download your custom achievement card to share with friends!</p>
+        
+        <!-- Interactive Preview -->
+        <div id="shareCardPreview" class="share-card-preview" style="width: 100%; border-radius: var(--radius-lg); background: linear-gradient(135deg, var(--accent), var(--bg)); color: white; padding: 24px; position: relative; text-align: left; box-shadow: var(--shadow-md); margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden;">
+            <div class="card-glow" style="position: absolute; width: 150px; height: 150px; border-radius: 50%; background: var(--emerald); filter: blur(50px); opacity: 0.3; top: -50px; right: -50px;"></div>
+            <h4 style="font-family: 'Outfit', sans-serif; font-weight: 800; letter-spacing: 1px; color: var(--emerald); font-size: 12px; margin-bottom: 16px; text-transform: uppercase;">ECO TRACKER</h4>
+            
+            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
+                <div style="font-size: 52px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">{{ level_info.icon }}</div>
+                <div>
+                    <h3 style="font-size: 20px; font-weight: 800; font-family: 'Outfit', sans-serif; color: white;">{{ level_info.name }}</h3>
+                    <p style="font-size: 12px; color: var(--emerald-light); font-weight: 600;">Rank Accomplished</p>
+                </div>
+            </div>
+            
+            <div style="border-top: 1.5px dashed rgba(255,255,255,0.15); padding-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                    <span style="font-size: 11px; color: rgba(255,255,255,0.6); display: block; font-weight: 600; text-transform: uppercase;">Username</span>
+                    <strong style="font-size: 15px; color: white;">{{ user.username }}</strong>
+                </div>
+                <div>
+                    <span style="font-size: 11px; color: rgba(255,255,255,0.6); display: block; font-weight: 600; text-transform: uppercase;">Total Score</span>
+                    <strong style="font-size: 15px; color: var(--emerald);">{{ total_points }} pts</strong>
+                </div>
+                <div>
+                    <span style="font-size: 11px; color: rgba(255,255,255,0.6); display: block; font-weight: 600; text-transform: uppercase;">Active Streak</span>
+                    <strong style="font-size: 15px; color: #fbbf24;"><span class="streak-badge-fire">🔥</span> {{ user.profile.streak_count }} Days</strong>
+                </div>
+                <div>
+                    <span style="font-size: 11px; color: rgba(255,255,255,0.6); display: block; font-weight: 600; text-transform: uppercase;">Actions Uploaded</span>
+                    <strong style="font-size: 15px; color: white;">{{ action_count }} Complete</strong>
+                </div>
+            </div>
+        </div>
+        
+        <button onclick="downloadShareCard()" class="celebration-btn" style="margin-top: 0; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <span>💾</span> Download Card (PNG)
+        </button>
+    </div>
+</div>
+
+<script>
+// 1. Level Unlocks Dictionary
+const LEVEL_UNLOCKS = {
+    "Eco Novice": [
+        "🌱 Basic Seed Badge unlocked",
+        "🔓 Access to standard daily missions",
+        "💬 Join community eco forums"
+    ],
+    "Green Starter": [
+        "🍃 Custom Green Starter avatar frame",
+        "🔓 Double-mission unlocks",
+        "📈 View basic progress charts"
+    ],
+    "Eco Activist": [
+        "🌿 Bronze level badge unlocked",
+        "🔓 Access to local community groups",
+        "⚡ Daily Streak multiplier activated"
+    ],
+    "Sustainability Seeker": [
+        "🍀 Custom Emerald avatar frame",
+        "🔓 Access to Advanced Recycling tasks",
+        "📊 Interactive habits analytics dashboard"
+    ],
+    "Waste Warrior": [
+        "🧹 Waste Sorting Expert Badge",
+        "🔓 Access to weekly neighborhood quests",
+        "🏆 Entry to regional leaderboards"
+    ],
+    "Planet Protector": [
+        "🌍 Glowing planet avatar border",
+        "🔓 Host community eco challenges",
+        "🛡️ Earn double points for cleaning tasks"
+    ],
+    "Forest Guardian": [
+        "🌳 Forest Guardian animated frame",
+        "🔓 Access to rare tree-planting missions",
+        "👑 Dedicated community helper title"
+    ],
+    "Energy Innovator": [
+        "⚡ Energy master glowing icon",
+        "🔓 Special clean emission quests",
+        "🎁 Access to exclusive eco rewards store"
+    ],
+    "Climate Champion": [
+        "🏆 Golden crown avatar border",
+        "🔓 Invite friends to elite group quests",
+        "📢 Public speaker title on feed"
+    ],
+    "Earth Guardian": [
+        "🛡️ Mythic Earth Guardian animated halo border",
+        "🔓 Unlimited custom quests generation",
+        "🌟 Hall of Fame lifetime induction"
+    ]
+};
+
+// 2. Open Level Details Modal
+function openLevelDetails(element) {
+    const name = element.getAttribute("data-name");
+    const icon = element.getAttribute("data-icon");
+    const min = element.getAttribute("data-min");
+    const max = element.getAttribute("data-max");
+    const desc = element.getAttribute("data-desc");
+    const unlocked = element.getAttribute("data-unlocked") === "true";
+    
+    document.getElementById("modalLevelIcon").textContent = icon;
+    document.getElementById("modalLevelName").textContent = name;
+    document.getElementById("modalLevelPoints").textContent = `${min} - ${max} pts`;
+    document.getElementById("modalLevelDesc").textContent = desc;
+    
+    const unlocksList = document.getElementById("modalLevelUnlocks");
+    unlocksList.innerHTML = "";
+    
+    const unlocks = LEVEL_UNLOCKS[name] || ["🔓 Basic level rewards"];
+    unlocks.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        if (!unlocked) {
+            li.style.color = "var(--text-muted)";
+            li.style.opacity = "0.7";
+            li.textContent = "🔒 [Locked] " + item.substring(2);
+        }
+        unlocksList.appendChild(li);
+    });
+    
+    const modal = document.getElementById("levelDetailsModal");
+    modal.style.display = "flex";
+}
+
+function closeLevelDetails() {
+    document.getElementById("levelDetailsModal").style.display = "none";
+}
+
+// 3. Share Modal Actions
+function openShareModal() {
+    document.getElementById("shareModal").style.display = "flex";
+}
+
+function closeShareModal() {
+    document.getElementById("shareModal").style.display = "none";
+}
+
+// 4. Pure JS HTML5 Canvas Card Generation & Download
+function downloadShareCard() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 800;
+    canvas.height = 500;
+    const ctx = canvas.getContext("2d");
+    
+    // Background gradient (Premium Nature Theme)
+    const gradient = ctx.createLinearGradient(0, 0, 800, 500);
+    gradient.addColorStop(0, "#1d2b20"); // Deep nature green
+    gradient.addColorStop(1, "#111612"); // Near-black green
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Design accents (Glowing circles)
+    ctx.beginPath();
+    ctx.arc(700, 100, 200, 0, Math.PI * 2);
+    const radGrad = ctx.createRadialGradient(700, 100, 0, 700, 100, 200);
+    radGrad.addColorStop(0, "rgba(16, 185, 129, 0.2)"); // emerald
+    radGrad.addColorStop(1, "rgba(16, 185, 129, 0)");
+    ctx.fillStyle = radGrad;
+    ctx.fill();
+    
+    // Drawing borders and grid
+    ctx.strokeStyle = "rgba(78, 128, 84, 0.15)";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(25, 25, 750, 450);
+    
+    // Header
+    ctx.font = "800 16px 'Outfit', sans-serif";
+    ctx.fillStyle = "#10b981"; // Emerald
+    ctx.fillText("ECO TRACKER", 50, 70);
+    
+    ctx.font = "700 12px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.fillText("INDIVIDUAL ECO ACHIEVEMENT CARD", 50, 90);
+    
+    // Draw Level Icon (Emoji rendering support on Canvas)
+    ctx.font = "100px Arial";
+    ctx.fillText("{{ level_info.icon }}", 80, 250);
+    
+    // Draw Level Name
+    ctx.font = "800 36px 'Outfit', sans-serif";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("{{ level_info.name }}", 230, 210);
+    
+    ctx.font = "600 16px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillStyle = "#eff6f0"; // primary light
+    ctx.fillText("Rank Accomplished", 230, 240);
+    
+    // Divider line
+    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(50, 310);
+    ctx.lineTo(750, 310);
+    ctx.stroke();
+    
+    // Draw Stats Grid
+    const drawStat = (label, value, color, x, y) => {
+        ctx.font = "600 12px 'Plus Jakarta Sans', sans-serif";
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fillText(label.toUpperCase(), x, y);
+        
+        ctx.font = "800 22px 'Outfit', sans-serif";
+        ctx.fillStyle = color;
+        ctx.fillText(value, x, y + 30);
+    };
+    
+    drawStat("Username", "{{ user.username }}", "#ffffff", 50, 360);
+    drawStat("Total Score", "{{ total_points }} pts", "#10b981", 230, 360);
+    drawStat("Active Streak", "🔥 {{ user.profile.streak_count }} Days", "#fbbf24", 430, 360);
+    drawStat("Actions Completed", "{{ action_count }} uploads", "#ffffff", 610, 360);
+    
+    // Footer badge
+    ctx.font = "500 11px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.fillText("JOIN THE GREEN REVOLUTION AT ECOTRACKER.APP", 50, 455);
+    
+    // Download trigger
+    const link = document.createElement("a");
+    link.download = "ecotracker_achievement.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+}
+
+// 5. Action Details Modal Actions
+function openActionDetails(imgUrl, category, caption, points, date) {
+    const img = document.getElementById("actionModalImage");
+    const placeholder = document.getElementById("actionModalImagePlaceholder");
+    
+    if (imgUrl) {
+        img.src = imgUrl;
+        img.style.display = "block";
+        placeholder.style.display = "none";
+    } else {
+        img.style.display = "none";
+        placeholder.style.display = "grid";
+    }
+    
+    document.getElementById("actionModalPoints").textContent = `+${points} pts`;
+    document.getElementById("actionModalCategory").textContent = category;
+    document.getElementById("actionModalCategoryExplain").textContent = category;
+    document.getElementById("actionModalDate").textContent = date;
+    document.getElementById("actionModalCaption").textContent = caption;
+    
+    document.getElementById("actionDetailsModal").style.display = "flex";
+}
+
+function closeActionDetails() {
+    document.getElementById("actionDetailsModal").style.display = "none";
+}
+
+// Close modals when clicking outside
+window.addEventListener("click", function(event) {
+    const detailsModal = document.getElementById("levelDetailsModal");
+    const shareModal = document.getElementById("shareModal");
+    const actionModal = document.getElementById("actionDetailsModal");
+    if (event.target === detailsModal) {
+        detailsModal.style.display = "none";
+    }
+    if (event.target === shareModal) {
+        shareModal.style.display = "none";
+    }
+    if (event.target === actionModal) {
+        actionModal.style.display = "none";
+    }
+});
+</script>
 {% endblock %}

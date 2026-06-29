@@ -22,7 +22,16 @@
                 </div>
 
                 <div class="mission-content">
-                    <h4>{{ user_mission.mission.title }}</h4>
+                    <h4>
+                        {% if user_mission.mission.category == 'recycling' %}♻️
+                        {% elif user_mission.mission.category == 'tree_planting' %}🌳
+                        {% elif user_mission.mission.category == 'green_transport' %}🚲
+                        {% elif user_mission.mission.category == 'clean_up' %}🧹
+                        {% elif user_mission.mission.category == 'saving_energy' %}⚡
+                        {% elif user_mission.mission.category == 'reusable_item' %}🥤
+                        {% endif %}
+                        {{ user_mission.mission.title }}
+                    </h4>
                     <p>{{ user_mission.mission.description }}</p>
                 </div>
 

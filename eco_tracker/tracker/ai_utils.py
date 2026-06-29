@@ -55,13 +55,13 @@ def classify_image_with_gemini(image_file, caption=""):
     - "reusable_item" (using reusable bags, water bottles, cups, food containers)
     
     Determine if this is a valid eco-friendly action (is_eco_action).
-    Provide a short reason (reason) in Vietnamese explaining why this is classified under that category.
+    Provide a short reason (reason) in English explaining why this is classified under that category.
     
     Respond ONLY with a valid JSON object matching this schema:
     {{
         "category": "recycling" | "tree_planting" | "green_transport" | "clean_up" | "saving_energy" | "reusable_item",
         "confidence": 0.0 to 1.0,
-        "reason": "explanation in Vietnamese",
+        "reason": "explanation in English",
         "is_eco_action": true | false
     }}
     Do not wrap the JSON in markdown blocks. Just return the raw JSON string.
@@ -100,7 +100,7 @@ def classify_image_with_gemini(image_file, caption=""):
     return {
         "category": data.get("category", random.choice(ALLOWED_AI_CATEGORIES)),
         "confidence": float(data.get("confidence", 0.85)),
-        "reason": data.get("reason", "Hành động bảo vệ môi trường được AI xác nhận."),
+        "reason": data.get("reason", "Environmental action confirmed by AI."),
         "is_eco_action": bool(data.get("is_eco_action", True)),
     }
 
@@ -130,25 +130,25 @@ def classify_eco_image(image_file, caption=""):
 
     if any(k in text_to_check for k in ["tree", "plant", "garden", "trồng cây", "hoa", "cây"]):
         category = "tree_planting"
-        reason = "Hình ảnh hoặc chú thích cho thấy hoạt động trồng cây, làm vườn hoặc chăm sóc cây xanh."
+        reason = "Image or caption indicates tree planting, gardening, or caring for plants."
     elif any(k in text_to_check for k in ["bike", "cycle", "walk", "bus", "train", "transport", "xe đạp", "đi bộ", "xe buýt"]):
         category = "green_transport"
-        reason = "Hình ảnh hoặc chú thích cho thấy di chuyển thân thiện với môi trường, hạn chế phát thải carbon."
+        reason = "Image or caption indicates eco-friendly transportation, reducing carbon emissions."
     elif any(k in text_to_check for k in ["trash", "clean", "litter", "sweep", "rác", "dọn dẹp", "quét"]):
         category = "clean_up"
-        reason = "Hình ảnh hoặc chú thích cho thấy hoạt động dọn dẹp vệ sinh, nhặt rác hoặc làm sạch không gian chung."
+        reason = "Image or caption indicates cleaning up, picking up litter, or cleaning shared spaces."
     elif any(k in text_to_check for k in ["light", "energy", "electric", "power", "solar", "tiết kiệm điện", "tắt điện"]):
         category = "saving_energy"
-        reason = "Hình ảnh hoặc chú thích cho thấy việc tiết kiệm năng lượng, tắt thiết bị điện hoặc sử dụng điện mặt trời."
+        reason = "Image or caption indicates saving energy, turning off lights/appliances, or using solar energy."
     elif any(k in text_to_check for k in ["bag", "bottle", "cup", "mug", "flask", "reusable", "túi vải", "bình nước"]):
         category = "reusable_item"
-        reason = "Hình ảnh hoặc chú thích cho thấy việc sử dụng đồ dùng tái sử dụng nhằm giảm thiểu rác thải nhựa."
+        reason = "Image or caption indicates using reusable items to reduce plastic waste."
     elif any(k in text_to_check for k in ["recycle", "plastic", "paper", "cardboard", "can", "tái chế", "chai nhựa"]):
         category = "recycling"
-        reason = "Hình ảnh hoặc chú thích cho thấy hoạt động phân loại rác thải, tái chế hoặc sử dụng tuần hoàn tài nguyên."
+        reason = "Image or caption indicates waste sorting, recycling, or circular resource usage."
     else:
         category = random.choice(ALLOWED_AI_CATEGORIES)
-        reason = "Chế độ AI Demo: Danh mục được phân loại dựa trên phân tích hình ảnh của hệ thống."
+        reason = "AI Demo Mode: Category classified based on system image analysis."
 
     confidence = 0.94 if caption else 0.82
 

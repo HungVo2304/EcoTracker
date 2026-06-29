@@ -54,11 +54,16 @@
 
 <!-- Group Weekly Quest Card -->
 {% if quest %}
-<div class="card" style="margin-bottom: 32px; border: 1.5px solid var(--primary); background: linear-gradient(135deg, var(--primary-light), var(--accent-light));">
-    <div class="card-header" style="margin-bottom: 12px;">
+<div class="card" style="margin-bottom: 32px; border: 1.5px solid var(--primary-glow); background: rgba(255, 255, 255, 0.45); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: var(--shadow-md), var(--shadow-glow); position: relative; overflow: visible;">
+    <!-- Ambient back glow -->
+    <div style="position: absolute; top: -10%; left: 5%; width: 90%; height: 120%; background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%); z-index: -1; pointer-events: none;"></div>
+    
+    <div class="card-header" style="margin-bottom: 16px;">
         <div>
-            <p class="card-label" style="color: var(--primary); font-weight: 700;">Weekly Quest</p>
-            <h2 style="font-size: 20px; font-weight: 800; color: var(--accent); letter-spacing: -0.3px; margin: 4px 0 2px;">
+            <p class="card-label" style="color: var(--primary); font-weight: 800; display: flex; align-items: center; gap: 6px;">
+                <span>👥</span> CO-OP GROUP QUEST
+            </p>
+            <h2 style="font-size: 22px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; margin: 6px 0 4px; font-family: 'Outfit', sans-serif;">
                 {% if quest.category == 'recycling' %}♻️ Recycle together!
                 {% elif quest.category == 'tree_planting' %}🌳 Plant trees together!
                 {% elif quest.category == 'green_transport' %}🚲 Ride green together!
@@ -67,24 +72,30 @@
                 {% elif quest.category == 'reusable_item' %}🛍️ Use reusable items!
                 {% else %}🌱 Green together!{% endif %}
             </h2>
-            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.4; margin: 0;">
-                All members' actions in this category contribute. Resets every 7 days.
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0;">
+                All members' actions in this category contribute. Complete the quest to earn a shared <strong>+30 pts</strong> reward!
             </p>
         </div>
-        <span class="level-badge" style="background: var(--primary); color: white; border-radius: var(--radius-sm);">
-            {% if quest.is_completed %}🏆 Completed! +100 pts{% else %}⚡ Active{% endif %}
+        <span class="level-badge" style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; border-radius: var(--radius-sm); font-weight: 800; font-size: 11px; padding: 6px 12px; box-shadow: var(--shadow-sm);">
+            {% if quest.is_completed %}🏆 Completed! +30 pts each{% else %}⚡ Active{% endif %}
         </span>
     </div>
 
-    <div class="group-challenge-progress" style="margin: 12px 0 8px 0;">
-        <div class="group-progress-bar-bg" style="background: #e5ecd8;">
-            <div class="group-progress-bar-fill" style="width: {{ quest_percent }}%; background: linear-gradient(90deg, var(--primary), var(--emerald));"></div>
+    <div class="group-challenge-progress" style="margin: 20px 0 12px 0;">
+        <div class="group-progress-bar-bg" style="background: rgba(229, 236, 216, 0.6); height: 12px; border-radius: 6px; overflow: hidden; position: relative;">
+            <div class="group-progress-bar-fill" style="width: {{ quest_percent }}%; height: 100%; background: linear-gradient(90deg, var(--emerald), var(--primary)); border-radius: 6px; box-shadow: 0 0 14px var(--emerald); position: relative; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);">
+                <!-- Animated highlight overlay -->
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent); animation: slide-right 2s infinite linear; pointer-events: none;"></div>
+            </div>
         </div>
     </div>
 
-    <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--accent);">
-        <span>Progress: {{ quest_count }} / {{ quest.target_count }} actions</span>
-        <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; font-family: inherit;">Started: {{ quest.start_date|date:"d M Y" }}</span>
+    <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; color: var(--accent);">
+        <span style="display: flex; align-items: center; gap: 6px;">
+            Progress: <strong style="color: var(--primary); font-size: 15px;">{{ quest_count }}</strong> / {{ quest.target_count }} actions 
+            <span style="font-weight: 600; color: var(--text-muted); font-size: 12px;">({{ quest_percent }}%)</span>
+        </span>
+        <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Resets weekly • Started: {{ quest.start_date|date:"d M Y" }}</span>
     </div>
 </div>
 {% endif %}
@@ -110,13 +121,18 @@
                         #{{ forloop.counter }}
                     </div>
 
-                    {% if member.profile.avatar %}
-                        <img src="{{ member.profile.avatar.url }}" alt="{{ member.username }}" class="friend-avatar" style="object-fit: cover;">
-                    {% else %}
-                        <div class="friend-avatar">
-                            {{ member.username|first|upper }}
-                        </div>
-                    {% endif %}
+                    <div style="position: relative; width: 44px; height: 44px; flex-shrink: 0; margin-right: 2px;">
+                        {% if member.profile.avatar %}
+                            <img src="{{ member.profile.avatar.url }}" alt="{{ member.username }}" class="friend-avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); display: block;">
+                        {% else %}
+                            <div class="friend-avatar" style="width: 100%; height: 100%; border-radius: 50%; background: var(--primary-light); border: 2px solid var(--border); display: grid; place-items: center; font-weight: 800; font-size: 16px; color: var(--primary); margin: 0;">
+                                {{ member.username|first|upper }}
+                            </div>
+                        {% endif %}
+                        {% if member.profile.active_frame %}
+                            <div style="position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px; border-radius: 50%; pointer-events: none; z-index: 2; {{ member.profile.active_frame.css_style }}"></div>
+                        {% endif %}
+                    </div>
 
                     <div class="leaderboard-info">
                         <h4 style="display: flex; align-items: center; gap: 8px;">

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="shop-container" style="max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px;">
+    
+    <!-- Available Points Header Card -->
+    <div class="card" style="background: linear-gradient(135deg, var(--panel), var(--primary-light)); display: flex; justify-content: space-between; align-items: center; padding: 32px; border-radius: var(--radius-xl); border: 1.5px solid var(--primary-glow);">
+        <div>
+            <p class="card-label" style="color: var(--primary); font-weight: 800;">YOUR BALANCE</p>
+            <h2 style="font-size: 36px; font-weight: 800; color: var(--accent); font-family: 'Outfit', sans-serif; margin-top: 4px;">
+                {{ available_points }} <span style="font-size: 20px; font-weight: 600; color: var(--text-muted);">pts available</span>
+            </h2>
+            <p class="muted-text" style="font-size: 13px; margin-top: 4px; color: var(--text-muted);">
+                Total all-time score: <strong>{{ total_points }} pts</strong> (spending points does not affect your Leaderboard rank).
+            </p>
+        </div>
+        
+        <!-- Active Frame Preview -->
+        <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <p class="card-label" style="font-size: 11px;">Equipped Frame</p>
+            <div style="position: relative; width: 80px; height: 80px; border-radius: 50%; background: var(--bg); display: grid; place-items: center; font-size: 32px; box-shadow: var(--shadow-sm); border: 2px solid var(--border); overflow: visible;">
+                <!-- Avatar icon -->
+                👤
+                <!-- Equipped Frame Border overlay -->
+                {% if active_frame %}
+                    <div style="position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px; border-radius: 50%; pointer-events: none; {{ active_frame.css_style }}"></div>
+                {% endif %}
+            </div>
+            <span style="font-size: 12px; font-weight: 700; color: var(--accent);">
+                {% if active_frame %}{{ active_frame.name }}{% else %}Default Profile{% endif %}
+            </span>
+        </div>
+    </div>
+
+    <!-- Shop Grid -->
+    <div>
+        <h2 style="font-size: 24px; font-weight: 800; color: var(--accent); font-family: 'Outfit', sans-serif; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+            <span>🛍️</span> Available Avatar Frames
+        </h2>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px;">
+            {% for item in frames %}
+                <div class="card" style="display: flex; flex-direction: column; gap: 20px; text-align: center; align-items: center; padding: 28px; position: relative;">
+                    
+                    <!-- Frame Preview -->
+                    <div style="position: relative; width: 90px; height: 90px; border-radius: 50%; background: var(--bg); display: grid; place-items: center; font-size: 36px; margin-top: 12px; box-shadow: var(--shadow-sm); border: 2.5px solid var(--border);">
+                        👤
+                        <!-- Animated border overlay -->
+                        <div style="position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px; border-radius: 50%; pointer-events: none; {{ item.frame.css_style }}"></div>
+                    </div>
+
+                    <!-- Details -->
+                    <div>
+                        <h3 style="font-size: 18px; font-weight: 800; color: var(--accent); margin-bottom: 6px; font-family: 'Outfit', sans-serif; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <span>{{ item.frame.preview_emoji }}</span> {{ item.frame.name }}
+                        </h3>
+                        <p class="muted-text" style="font-size: 12px; color: var(--text-muted); line-height: 1.4; min-height: 36px;">
+                            Decorate your profile avatar with this exclusive animated effect.
+                        </p>
+                    </div>
+
+                    <!-- Cost / Status -->
+                    <div style="width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: auto;">
+                        {% if not item.owned %}
+                            <!-- Buy Button -->
+                            <form method="post" action="{% url 'frame_shop' %}" style="width: 100%;">
+                                {% csrf_token %}
+                                <input type="hidden" name="frame_code" value="{{ item.frame.code }}">
+                                <input type="hidden" name="action" value="purchase">
+                                <button type="submit" class="upload-btn" style="width: 100%; justify-content: center; font-size: 13px; font-weight: 800; padding: 11px; display: flex; align-items: center; gap: 6px; border-radius: var(--radius-md);" {% if available_points < item.frame.cost %}disabled style="opacity: 0.5; cursor: not-allowed; background: var(--border); color: var(--text-muted); box-shadow: none;"{% endif %}>
+                                    <span>🛒</span> Buy for {{ item.frame.cost }} pts
+                                </button>
+                            </form>
+                        {% else %}
+                            <!-- Equip / Unequip Buttons -->
+                            {% if item.equipped %}
+                                <form method="post" action="{% url 'frame_shop' %}" style="width: 100%;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="frame_code" value="{{ item.frame.code }}">
+                                    <input type="hidden" name="action" value="unequip">
+                                    <button type="submit" class="danger-btn" style="width: 100%; justify-content: center; font-size: 13px; font-weight: 800; padding: 11px; border-radius: var(--radius-md); border: none; cursor: pointer;">
+                                        Unequip Frame
+                                    </button>
+                                </form>
+                            {% else %}
+                                <form method="post" action="{% url 'frame_shop' %}" style="width: 100%;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="frame_code" value="{{ item.frame.code }}">
+                                    <input type="hidden" name="action" value="equip">
+                                    <button type="submit" class="secondary-btn" style="width: 100%; justify-content: center; font-size: 13px; font-weight: 800; padding: 11px; border-radius: var(--radius-md); border: 1.5px solid var(--primary); cursor: pointer; color: var(--primary);">
+                                        Equip Frame
+                                    </button>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Eco Tracker</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v={% now 'U' %}">
 </head>
 <body>
 <script>
@@ -19,6 +19,12 @@
 </script>
 
 <div class="app-layout">
+    <script>
+        // Immediate check to prevent sidebar flash on load
+        if (localStorage.getItem('sidebar-collapsed') === 'true') {
+            document.currentScript.parentElement.classList.add('sidebar-collapsed');
+        }
+    </script>
     {% include "components/sidebar.html" %}
 
     <main class="main-content">
@@ -40,7 +46,7 @@
 </div>
 
 <script>
-    // Theme Toggle Logic
+    // Theme & Sidebar Toggle Logic
     document.addEventListener("DOMContentLoaded", function() {
         const themeToggleBtn = document.getElementById("themeToggleBtn");
         if (themeToggleBtn) {
@@ -56,6 +62,17 @@
                 const isDark = document.body.classList.contains("dark-mode");
                 localStorage.setItem("theme", isDark ? "dark" : "light");
                 themeToggleBtn.textContent = isDark ? "☀️" : "🌙";
+            });
+        }
+
+        // Sidebar Toggle
+        const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
+        const appLayout = document.querySelector(".app-layout");
+        if (sidebarToggleBtn && appLayout) {
+            sidebarToggleBtn.addEventListener("click", function() {
+                appLayout.classList.toggle("sidebar-collapsed");
+                const isCollapsed = appLayout.classList.contains("sidebar-collapsed");
+                localStorage.setItem("sidebar-collapsed", isCollapsed ? "true" : "false");
             });
         }
     });
